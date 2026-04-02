@@ -69,20 +69,21 @@ router.get('/:id', (req, res) => {
 router.post('/', upload.array('pages', 30), (req, res) => {
   const db    = getDb();
   const files = req.files || [];
-  const { name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id } = req.body;
+  const { name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, custom_domain } = req.body;
 
   if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
   if (files.length < 2) return res.status(400).json({ error: 'Envie pelo menos 2 arquivos HTML' });
 
-  const slug = uniqueSlug(db, test_uri || fromName(name));
-  const pct  = Math.floor(100 / files.length);
-  const rem  = 100 - pct * files.length;
+  const slug   = uniqueSlug(db, test_uri || fromName(name));
+  const domain = custom_domain?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '') || null;
+  const pct    = Math.floor(100 / files.length);
+  const rem    = 100 - pct * files.length;
 
   const tx = db.transaction(() => {
     const r = db.prepare(`
-      INSERT INTO tests (name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(name.trim(), slug, conversion_page_url || null, ga4_measurement_id || null, ga4_api_secret || null, meta_pixel_id || null);
+      INSERT INTO tests (name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, custom_domain)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(name.trim(), slug, conversion_page_url || null, ga4_measurement_id || null, ga4_api_secret || null, meta_pixel_id || null, domain);
 
     const tid = r.lastInsertRowid;
     const ins = db.prepare('INSERT INTO variations (name, percentage, remaining, test_id, file_path, file_original) VALUES (?,?,?,?,?,?)');
@@ -145,16 +146,17 @@ router.put('/:id', (req, res) => {
   const current = db.prepare('SELECT * FROM tests WHERE id = ?').get(req.params.id);
   if (!current) return res.status(404).json({ error: 'Não encontrado' });
 
-  const { name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, active } = req.body;
+  const { name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, active, custom_domain } = req.body;
 
-  let slug = test_uri ? sanitize(test_uri) : current.test_uri;
+  let slug   = test_uri ? sanitize(test_uri) : current.test_uri;
   if (slug !== current.test_uri) slug = uniqueSlug(db, slug);
+  const domain = custom_domain?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '') || null;
 
   db.prepare(`
     UPDATE tests SET name = ?, test_uri = ?, conversion_page_url = ?, ga4_measurement_id = ?,
-    ga4_api_secret = ?, meta_pixel_id = ?, active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    ga4_api_secret = ?, meta_pixel_id = ?, active = ?, custom_domain = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
   `).run(name, slug, conversion_page_url, ga4_measurement_id || null, ga4_api_secret || null,
-         meta_pixel_id || null, active ?? 1, req.params.id);
+         meta_pixel_id || null, active ?? 1, domain, req.params.id);
 
   const test = db.prepare('SELECT * FROM tests WHERE id = ?').get(req.params.id);
   test.variations = db.prepare('SELECT * FROM variations WHERE test_id = ?').all(req.params.id);

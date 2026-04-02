@@ -328,6 +328,54 @@ app.get('/embed.js', (req, res) => {
 })();`);
 });
 
+// ── Custom domain handler ─────────────────────────────────────────────────
+// Runs before SPA fallback. If the incoming hostname matches a test's
+// custom_domain, treat it as the entry point (same logic as /t/:slug).
+app.get('*', publicLimiter, (req, res, next) => {
+  const host = req.hostname;
+  const db   = getDb();
+  const test = db.prepare('SELECT * FROM tests WHERE custom_domain = ? AND active = 1').get(host);
+  if (!test) return next();
+
+  let cid = req.cookies?.cp_uid;
+  if (!cid) {
+    cid = uuidv4();
+    res.cookie('cp_uid', cid, { maxAge: 2592000000, httpOnly: false, sameSite: 'Lax' });
+  }
+
+  const existing = req.cookies?.[`cp_t${test.id}`];
+  if (existing) {
+    const v = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(+existing, test.id);
+    if (v?.file_path) return res.redirect(`/p/${test.id}/${v.id}`);
+  }
+
+  const chosen = assignVariation(db, test, cid);
+  if (!chosen) return res.status(500).send('Nenhuma variação disponível');
+
+  res.cookie(`cp_t${test.id}`, String(chosen.id), { maxAge: 2592000000, httpOnly: false, sameSite: 'Lax' });
+
+  const ua      = req.headers['user-agent'] || '';
+  const referer = req.headers['referer'] || req.headers['referrer'] || '';
+  const ip      = getClientIp(req);
+  const utm     = parseUtm(req.url.includes('?') ? `http://x${req.url}` : referer);
+  const device  = getDeviceType(ua);
+
+  db.prepare(`
+    UPDATE interactions SET referrer = ?, device_type = ?,
+      utm_source = ?, utm_medium = ?, utm_campaign = ?, utm_term = ?, utm_content = ?, ip_hash = ?
+    WHERE test_id = ? AND client_id = ?
+  `).run(referer || null, device, utm.utm_source, utm.utm_medium, utm.utm_campaign,
+         utm.utm_term, utm.utm_content, hashIp(ip), test.id, cid);
+
+  const eventId = buildEventId(test.id, chosen.id, cid);
+  sendGA4Event(test, 'ab_test_view', { client_id: cid, test_name: test.name, variation_name: chosen.name, variation_id: String(chosen.id), event_id: eventId });
+
+  logger.debug('Custom domain visitor', { host, variation: chosen.name, device, cid: cid.slice(0, 8) });
+
+  if (chosen.file_path) return res.redirect(`/p/${test.id}/${chosen.id}`);
+  res.status(404).send('Variação sem arquivo HTML');
+});
+
 // ── SPA fallback ──────────────────────────────────────────────────────────
 app.get('*', (req, res) => {
   const skip = ['/api/', '/p/', '/t/', '/embed.js', '/auth/', '/health'];
