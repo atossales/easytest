@@ -52,7 +52,7 @@ function handleLogin(req, res) {
       maxAge: SESSION_TTL,
       httpOnly: true,
       sameSite: 'Lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.HTTPS_ENABLED === 'true',
     });
     return res.redirect('/');
   }
