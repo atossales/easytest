@@ -12,8 +12,9 @@ const { requireAuth, handleLogin, handleLogout, loginPage } = require('./middlew
 const { sendEvent, buildEventId } = require('./lib/metaCapi');
 const logger = require('./lib/logger');
 
-const app  = express();
-const PORT = process.env.PORT || 3000;
+const app     = express();
+const PORT    = process.env.PORT || 3000;
+const SITE_URL = process.env.SITE_URL || null; // set in Coolify env vars
 
 // ── Trust proxy (needed for rate limiting behind nginx/EasyPanel) ──────────
 app.set('trust proxy', 1);
@@ -214,7 +215,7 @@ app.get('/t/:slug', publicLimiter, (req, res) => {
   );
 
   if (meta_pixel_id && meta_access_token) {
-    const siteUrl = getSetting('site_url') || `${req.protocol}://${req.get('host')}`;
+    const siteUrl = SITE_URL || getSetting('site_url') || `${req.protocol}://${req.get('host')}`;
     sendEvent({
       pixelId:        meta_pixel_id,
       accessToken:    meta_access_token,
@@ -306,7 +307,7 @@ app.get('/p/:tid/:vid', publicLimiter, (req, res) => {
 
 // ── /embed.js ─────────────────────────────────────────────────────────────
 app.get('/embed.js', (req, res) => {
-  const h = req.protocol + '://' + req.get('host');
+  const h = SITE_URL || getSetting('site_url') || (req.protocol + '://' + req.get('host'));
   res.type('application/javascript').send(`
 (function(){
   var H="${h}";
