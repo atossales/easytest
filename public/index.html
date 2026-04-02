@@ -18,33 +18,31 @@ body{font-family:'Montserrat',sans-serif;background:var(--w);color:var(--bk);min
 .sb a{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:var(--s);color:var(--g5);text-decoration:none;font-weight:600;font-size:12.5px;cursor:pointer;margin-bottom:2px;transition:all .12s}
 .sb a:hover{background:var(--g1);color:var(--bk)}.sb a.on{background:var(--bl);color:var(--b)}
 .sb a svg{width:17px;height:17px;flex-shrink:0}
-.sb-foot{margin-top:auto;background:var(--g0);border-radius:var(--s);padding:10px}
+.sb-foot{margin-top:auto;background:var(--g0);border-radius:var(--s);padding:10px;margin-bottom:8px}
 .sb-foot label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g5);display:block;margin-bottom:5px}
 .sb-foot code{display:block;font-size:9px;background:var(--w);border:1px solid var(--g2);border-radius:5px;padding:6px 8px;word-break:break-all;color:var(--b);font-family:'Courier New',monospace;line-height:1.4}
 .sb-foot button{margin-top:6px;width:100%;padding:5px;font-size:10px;font-weight:700;font-family:'Montserrat',sans-serif;background:var(--b);color:#fff;border:none;border-radius:5px;cursor:pointer}
+.sb-logout{font-size:11px;color:var(--g5);text-decoration:none;padding:7px 11px;border-radius:var(--s);display:flex;align-items:center;gap:7px;transition:all .12s}
+.sb-logout:hover{background:var(--rl);color:var(--rd)}
 .mn{flex:1;margin-left:220px;padding:24px 28px;background:var(--w)}
 .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
 .ph h1{font-weight:900;font-size:22px;letter-spacing:-.5px}
 .ph .sub{font-size:12px;color:var(--g5);font-weight:500;margin-top:2px}
+.ph-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--s);font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;border:none;cursor:pointer;transition:all .12s;text-decoration:none}
 .bp{background:var(--b);color:#fff}.bp:hover{background:var(--bd);transform:translateY(-1px)}
 .bs{background:var(--w);color:var(--bk);border:1px solid var(--g2)}.bs:hover{border-color:var(--g3)}
 .br{background:var(--rl);color:var(--rd)}.br:hover{background:var(--rd);color:#fff}
-.bsm{padding:5px 10px;font-size:11px}
-.btn svg{width:14px;height:14px}
-.card{background:var(--w);border-radius:var(--r);border:1px solid var(--g2);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
-.card h3{font-weight:800;font-size:13.5px;margin-bottom:14px}
+.bsm{padding:5px 10px;font-size:11px}.btn svg{width:14px;height:14px}
+.card{background:var(--w);border-radius:var(--r);border:1px solid var(--g2);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.05)}.card h3{font-weight:800;font-size:13.5px;margin-bottom:14px}
 .sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
 .sc{background:var(--w);border:1px solid var(--g2);border-radius:var(--r);padding:16px 18px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .sc .sl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g5);margin-bottom:5px}
-.sc .sv{font-size:24px;font-weight:900;letter-spacing:-1px}
-.sv.blue{color:var(--b)}.sv.green{color:var(--gn)}
-.sc .st{font-size:10px;font-weight:600;margin-top:2px;color:var(--g5)}
+.sc .sv{font-size:24px;font-weight:900;letter-spacing:-1px}.sv.blue{color:var(--b)}.sv.green{color:var(--gn)}.sc .st{font-size:10px;font-weight:600;margin-top:2px;color:var(--g5)}
 table{width:100%;border-collapse:collapse}
 th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g5);padding:9px 12px;border-bottom:2px solid var(--g2)}
 td{padding:10px 12px;font-size:12.5px;font-weight:500;border-bottom:1px solid var(--g1);color:var(--g7)}
-tr:hover td{background:var(--g0)}
-.tn{font-weight:700;color:var(--bk)}
+tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
 .badge{display:inline-block;padding:2px 8px;border-radius:16px;font-size:10px;font-weight:700}
 .b-on{background:var(--gl);color:var(--gn)}.b-off{background:var(--g1);color:var(--g5)}
 .fg{margin-bottom:16px}
@@ -56,197 +54,632 @@ tr:hover td{background:var(--g0)}
 .bk{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--g5);text-decoration:none;margin-bottom:14px;cursor:pointer}
 .bk:hover{color:var(--b)}.bk svg{width:14px;height:14px}
 .acts{display:flex;gap:4px}
-.toast{position:fixed;bottom:18px;right:18px;background:var(--bk);color:#fff;padding:9px 16px;border-radius:var(--s);font-size:12px;font-weight:600;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s}
+.toast{position:fixed;bottom:18px;right:18px;color:#fff;padding:9px 16px;border-radius:var(--s);font-size:12px;font-weight:600;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;max-width:320px}
 .toast.show{opacity:1;transform:translateY(0)}
-/* Upload */
 .uz{border:2.5px dashed var(--g2);border-radius:var(--r);padding:48px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--g0)}
 .uz:hover,.uz.over{border-color:var(--b);background:var(--bl)}
 .uz svg{width:44px;height:44px;color:var(--g3);margin-bottom:10px}
-.uz.over svg{color:var(--b)}
-.uz h3{font-size:14px;font-weight:800;margin-bottom:4px}
-.uz p{font-size:11.5px;color:var(--g5);font-weight:500}
+.uz.over svg{color:var(--b)}.uz h3{font-size:14px;font-weight:800;margin-bottom:4px}.uz p{font-size:11.5px;color:var(--g5);font-weight:500}
 .fl{margin-top:14px;display:flex;flex-direction:column;gap:5px}
 .fi{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--g0);border:1px solid var(--g2);border-radius:var(--s)}
 .fi .fn{font-size:12px;font-weight:600;display:flex;align-items:center;gap:7px}
 .fi .fn svg{width:15px;height:15px;color:var(--gn)}
 .pct{display:inline-block;background:var(--bl);color:var(--b);padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px}
-.fi .fs{font-size:10px;color:var(--g5);font-weight:500}
-.fi .fx{background:none;border:none;color:var(--rd);cursor:pointer;font-size:15px;font-weight:700;padding:3px 7px;border-radius:4px}
+.fi .fs{font-size:10px;color:var(--g5);font-weight:500}.fi .fx{background:none;border:none;color:var(--rd);cursor:pointer;font-size:15px;font-weight:700;padding:3px 7px;border-radius:4px}
 .fi .fx:hover{background:var(--rl)}
 .tl{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--g0);border:1px solid var(--g2);border-radius:var(--s);margin-top:14px}
 .tl code{flex:1;font-size:11px;color:var(--b);font-family:'Courier New',monospace;word-break:break-all}
 .tl button{padding:5px 12px;font-size:10px;font-weight:700;background:var(--b);color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:'Montserrat',sans-serif}
-.ri{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--g1)}
-.ri:last-child{border:none}
+.ri{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--g1)}.ri:last-child{border:none}
 .rp{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:7px;font-weight:900;font-size:11px;flex-shrink:0}
 .rp.g{background:#FFF3D6;color:#D4930A}.rp.s{background:var(--g1);color:var(--g5)}.rp.br{background:#FFE8D6;color:#C46A20}
 .rn{font-weight:700;font-size:12.5px}.rt{font-size:10px;color:var(--g5)}.rr{font-weight:900;font-size:16px;color:var(--b)}
 .cc{position:relative;height:260px;margin-top:6px}
 .rs{padding:5px 24px 5px 9px;border:1.5px solid var(--g2);border-radius:var(--s);font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;color:var(--g7);cursor:pointer;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%236B6B6B' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E") no-repeat right 8px center}
-.coll{border:1px solid var(--g2);border-radius:var(--s);margin-top:12px}
-.coll summary{padding:10px 14px;font-size:12px;font-weight:700;color:var(--g5);cursor:pointer;list-style:none}
+.coll{border:1px solid var(--g2);border-radius:var(--s);margin-top:10px}.coll summary{padding:10px 14px;font-size:12px;font-weight:700;color:var(--g5);cursor:pointer;list-style:none}
 .coll summary::-webkit-details-marker{display:none}
-.coll summary::before{content:'▶ ';font-size:10px}
-.coll[open] summary::before{content:'▼ '}
+.coll summary::before{content:'▶ ';font-size:10px}.coll[open] summary::before{content:'▼ '}
 .coll .inner{padding:0 14px 14px}
 .warn{background:var(--bl);border-radius:var(--s);padding:10px 14px;font-size:11px;color:var(--b);font-weight:500;margin:12px 0;line-height:1.5}
-@media(max-width:768px){.sb{display:none}.mn{margin-left:0;padding:16px}.sg{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}}
+/* ── Variation Cards ── */
+.vc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:12px;margin-bottom:16px}
+.vc{background:var(--w);border:1.5px solid var(--g2);border-radius:var(--r);padding:18px 16px;position:relative;overflow:hidden;transition:box-shadow .15s,border-color .15s}
+.vc:hover{box-shadow:0 4px 18px rgba(0,0,0,.09);border-color:var(--g3)}
+.vc.vc-winner{border-color:#6EE7B7;box-shadow:0 0 0 2px rgba(0,196,140,.12)}
+.vc .vct{height:3px;position:absolute;top:0;left:0;right:0}
+.vc .vcb{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;margin-top:4px}
+.vc .vcn{font-weight:800;font-size:12.5px;color:var(--bk);flex:1;margin-right:4px}
+.vc .vcr{font-size:34px;font-weight:900;letter-spacing:-2px;margin:8px 0 1px;line-height:1}
+.vc .vcl{font-size:10px;color:var(--g5);font-weight:500;margin-bottom:10px}
+.vc .vcs{display:flex;gap:16px;border-top:1px solid var(--g1);padding-top:10px}
+.vc .vcsi{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g5)}
+.vc .vcv{font-size:13px;font-weight:800;color:var(--bk);margin-top:2px}
+/* Significance badges */
+.sig{display:inline-block;padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700;white-space:nowrap;letter-spacing:.2px}
+.sig-ctrl{background:var(--g1);color:var(--g5)}
+.sig-win{background:#D1FAE5;color:#065F46}
+.sig-win99{background:#064E3B;color:#A7F3D0}
+.sig-pend{background:#FEF3C7;color:#92400E}
+.sig-low{background:var(--g1);color:var(--g3)}
+/* Uplift */
+.upl{font-size:11px;font-weight:700;margin-top:4px}
+.upl.up{color:#00A97F}.upl.dn{color:var(--rd)}
+/* Confidence bar */
+.cb{height:4px;background:var(--g1);border-radius:2px;margin-top:8px;overflow:hidden}
+.cbf{height:100%;border-radius:2px;transition:width .7s ease}
+.cbl{font-size:9px;color:var(--g3);text-align:right;margin-top:2px;font-weight:600}
+/* Winner / progress banner */
+.wb{padding:14px 18px;border-radius:var(--s);margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;line-height:1.6}
+.wb.win{background:#D1FAE5;border:1px solid #6EE7B7;color:#065F46}
+.wb.pend{background:var(--bl);border:1px solid #BFDBFE;color:#1E3A8A}
+.wb.nodiff{background:var(--g0);border:1px solid var(--g2);color:var(--g5)}
+.wb .wi{font-size:22px;flex-shrink:0;margin-top:1px}
+.wb .wt{font-size:12.5px;font-weight:500}
+.wb strong{font-weight:800}
+/* Sample progress */
+.spw{background:var(--g0);border:1px solid var(--g2);border-radius:var(--r);padding:14px 18px;margin-bottom:14px}
+.spw .spt{font-size:12px;font-weight:700}
+.spw .spd{font-size:11px;color:var(--g5);font-weight:500;margin-top:2px}
+.spb{height:6px;background:var(--g2);border-radius:3px;margin:10px 0 4px;overflow:hidden}
+.spbf{height:100%;background:var(--b);border-radius:3px;transition:width .7s ease}
+.spm{font-size:9px;color:var(--g5);font-weight:600;display:flex;justify-content:space-between}
+/* Device/UTM breakdown */
+.drow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--g1)}
+.drow:last-child{border:none}
+.drow .dlb{font-size:11px;font-weight:600;min-width:65px;text-transform:capitalize}
+.dbar{flex:1;height:5px;background:var(--g1);border-radius:2px;overflow:hidden}
+.dbarf{height:100%;background:var(--b);border-radius:2px}
+.drow .dcnt{font-size:11px;font-weight:800;min-width:40px;text-align:right}
+/* Settings */
+.set-hd{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.set-hd h3{font-size:14px;font-weight:900}
+.set-tag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--gl);color:var(--gn);letter-spacing:.3px}
+.set-tag.off{background:var(--rl);color:var(--rd)}
+.set-desc{font-size:11.5px;color:var(--g5);font-weight:500;margin-bottom:16px;line-height:1.65}
+.conn-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--gl);color:var(--gn);border-radius:var(--s);font-size:11px;font-weight:700;margin-bottom:14px}
+.conn-badge svg{width:13px;height:13px}
+@media(max-width:768px){.sb{display:none}.mn{margin-left:0;padding:16px}.sg{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}.vc-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
 <div class="app">
+
 <aside class="sb">
   <div class="sb-brand"><div class="sb-logo">E</div><span>EasyTest</span></div>
   <nav>
-    <a onclick="go('dash')" data-p="dash" class="on"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
-    <a onclick="go('tests')" data-p="tests"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Meus Testes</a>
-    <a onclick="go('new')" data-p="new" style="color:var(--b)"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Novo Teste</a>
-    <a onclick="go('ga4')" data-p="ga4"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>GA4 Config</a>
+    <a onclick="go('dash')" data-p="dash" class="on">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a onclick="go('tests')" data-p="tests">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+      Meus Testes
+    </a>
+    <a onclick="go('new')" data-p="new" style="color:var(--b)">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Novo Teste
+    </a>
+    <a onclick="go('settings')" data-p="settings">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Configurações
+    </a>
   </nav>
   <div class="sb-foot">
     <label>Embed (conversão)</label>
     <code id="ec"></code>
     <button onclick="navigator.clipboard.writeText(document.getElementById('ec').textContent);toast('Copiado!')">Copiar</button>
   </div>
+  <a href="/auth/logout" class="sb-logout">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    Sair
+  </a>
 </aside>
+
 <main class="mn" id="m"></main>
 </div>
 <div class="toast" id="toast"></div>
+
 <script>
-let CH=null,UF=[];const O=location.origin;
-function go(p,d){document.querySelectorAll('.sb a').forEach(a=>a.classList.remove('on'));const l=document.querySelector(`[data-p="${p}"]`);if(l)l.classList.add('on');
-({dash:rDash,tests:rTests,new:rNew,ga4:rGA4,report:rRpt})[p]?.(d)}
-function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2200)}
-function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML}
-function N(n){return(n||0).toLocaleString('pt-BR')}
-async function api(u,o={}){const c={headers:{'Content-Type':'application/json'},...o};if(c.body instanceof FormData)delete c.headers['Content-Type'];else if(c.body&&typeof c.body==='object')c.body=JSON.stringify(c.body);return(await fetch(u,c)).json()}
+// ── Globals ──────────────────────────────────────
+let CH = null, UF = [];
+const O = location.origin;
+const COLORS = ['#0065FF','#00C48C','#FF6B6B','#FFB84D','#A855F7','#06B6D4','#F43F5E','#10B981'];
 
-// ═══ DASHBOARD ═══
-async function rDash(){const d=await api('/api/reports?range=30');const t=d.totals||{};
-document.getElementById('m').innerHTML=`<div class="ph"><div><h1>Dashboard</h1><div class="sub">Visão geral</div></div><button class="btn bp" onclick="go('new')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Novo Teste</button></div>
-<div class="sg"><div class="sc"><div class="sl">Testes Ativos</div><div class="sv blue">${t.active_tests||0}</div></div><div class="sc"><div class="sl">Visitantes</div><div class="sv">${N(t.total_views)}</div></div><div class="sc"><div class="sl">Conversões</div><div class="sv green">${N(t.total_conversions)}</div></div><div class="sc"><div class="sl">Taxa Geral</div><div class="sv blue">${t.overall_rate||'0.00'}%</div></div></div>
-<div class="grid-2"><div class="card"><h3>🏆 Ranking</h3>${d.ranking?.length?d.ranking.map((r,i)=>`<div class="ri"><div class="rp ${i===0?'g':i===1?'s':'br'}">${i+1}</div><div style="flex:1"><div class="rn">${esc(r.name)}</div><div class="rt">${r.views} vis · ${r.conversions} conv</div></div><div class="rr">${r.conversion_rate}%</div></div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--g3);font-size:12px">Sem dados</div>'}</div>
-<div class="card"><h3>📊 Funil</h3>${(()=>{const ts=d.tests?.filter(x=>x.views>0);if(!ts?.length)return'<div style="padding:30px;text-align:center;color:var(--g3);font-size:12px">Crie um teste para ver o funil</div>';const mx=Math.max(...ts.map(x=>x.views),1);return ts.slice(0,6).map(x=>`<div style="position:relative;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="position:absolute;left:0;top:0;bottom:0;width:${Math.max(10,(x.views/mx)*100)}%;background:var(--b);opacity:.08;border-radius:var(--s)"></div><div style="position:relative;z-index:1"><div style="font-weight:700;font-size:12.5px">${esc(x.name)}</div></div><div style="position:relative;z-index:1;text-align:right"><div style="font-weight:900;font-size:18px;color:var(--b)">${x.conversion_rate}%</div><div style="font-size:10px;color:var(--g5)">${x.views}→${x.conversions}</div></div></div>`).join('')})()}</div></div>`}
+// ── Core utils ───────────────────────────────────
+function go(p, d) {
+  document.querySelectorAll('.sb a[data-p]').forEach(a => a.classList.remove('on'));
+  const l = document.querySelector('[data-p="' + p + '"]');
+  if (l) l.classList.add('on');
+  ({dash: rDash, tests: rTests, new: rNew, settings: rSettings, report: rRpt})[p]?.(d);
+}
+function toast(m, err) {
+  const e = document.getElementById('toast');
+  e.textContent = m;
+  e.style.background = err ? 'var(--rd)' : 'var(--bk)';
+  e.classList.add('show');
+  setTimeout(() => e.classList.remove('show'), 2500);
+}
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+function N(n) { return (n || 0).toLocaleString('pt-BR'); }
+async function api(u, o) {
+  o = o || {};
+  const c = Object.assign({ headers: {'Content-Type': 'application/json'} }, o);
+  if (c.body instanceof FormData) delete c.headers['Content-Type'];
+  else if (c.body && typeof c.body === 'object') c.body = JSON.stringify(c.body);
+  const r = await fetch(u, c);
+  if (r.status === 401) { location.href = '/auth/login'; return {}; }
+  return r.json();
+}
 
-// ═══ TESTS LIST ═══
-async function rTests(){const ts=await api('/api/tests');
-document.getElementById('m').innerHTML=`<div class="ph"><div><h1>Meus Testes</h1><div class="sub">${ts.length} teste${ts.length!==1?'s':''}</div></div><button class="btn bp" onclick="go('new')">+ Novo Teste</button></div>
-<div class="card">${!ts.length?'<div style="padding:40px;text-align:center"><p style="color:var(--g5);font-size:13px;margin-bottom:14px">Nenhum teste criado ainda.</p><button class="btn bp" onclick="go(\'new\')">Criar Primeiro Teste</button></div>':`<table><thead><tr><th>Nome</th><th>Variações</th><th>Views</th><th>Conversões</th><th>Taxa</th><th>Status</th><th></th></tr></thead><tbody>${ts.map(t=>`<tr><td class="tn" style="cursor:pointer" onclick="go('report',${t.id})">${esc(t.name)}</td><td>${t.variation_count}</td><td>${N(t.total_views)}</td><td>${N(t.total_conversions)}</td><td style="font-weight:800;color:var(--b)">${t.total_views>0?((t.total_conversions/t.total_views)*100).toFixed(1):'0.0'}%</td><td><span class="badge ${t.active?'b-on':'b-off'}">${t.active?'Ativo':'Off'}</span></td><td class="acts"><button class="btn bs bsm" onclick="go('report',${t.id})">Ver</button><button class="btn br bsm" onclick="del(${t.id})">✕</button></td></tr>`).join('')}</tbody></table>`}</div>`}
+// ══════════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════════
+async function rDash() {
+  const d = await api('/api/reports?range=30');
+  const t = d.totals || {};
+  document.getElementById('m').innerHTML =
+    '<div class="ph"><div><h1>Dashboard</h1><div class="sub">Últimos 30 dias</div></div>' +
+    '<button class="btn bp" onclick="go(\'new\')">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+    'Novo Teste</button></div>' +
+    '<div class="sg">' +
+    '<div class="sc"><div class="sl">Testes Ativos</div><div class="sv blue">' + (t.active_tests || 0) + '</div></div>' +
+    '<div class="sc"><div class="sl">Visitantes</div><div class="sv">' + N(t.total_views) + '</div></div>' +
+    '<div class="sc"><div class="sl">Conversões</div><div class="sv green">' + N(t.total_conversions) + '</div></div>' +
+    '<div class="sc"><div class="sl">Taxa Geral</div><div class="sv blue">' + (t.overall_rate || '0.00') + '%</div></div>' +
+    '</div>' +
+    '<div class="grid-2">' +
+    '<div class="card"><h3>🏆 Ranking por Conversão</h3>' +
+    (d.ranking && d.ranking.length
+      ? d.ranking.map(function(r, i) {
+          return '<div class="ri"><div class="rp ' + (i===0?'g':i===1?'s':'br') + '">' + (i+1) + '</div>' +
+            '<div style="flex:1"><div class="rn">' + esc(r.name) + '</div><div class="rt">' + N(r.views) + ' vis · ' + N(r.conversions) + ' conv</div></div>' +
+            '<div class="rr">' + r.conversion_rate + '%</div></div>';
+        }).join('')
+      : '<div style="padding:20px;text-align:center;color:var(--g3);font-size:12px">Sem dados ainda</div>') +
+    '</div>' +
+    '<div class="card"><h3>📊 Funil de Conversão</h3>' +
+    (function() {
+      const ts = (d.tests || []).filter(function(x) { return x.views > 0; });
+      if (!ts.length) return '<div style="padding:30px;text-align:center;color:var(--g3);font-size:12px">Crie um teste para ver o funil</div>';
+      const mx = Math.max.apply(null, ts.map(function(x) { return x.views; }).concat([1]));
+      return ts.slice(0, 6).map(function(x) {
+        return '<div style="position:relative;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">' +
+          '<div style="position:absolute;left:0;top:0;bottom:0;width:' + Math.max(10,(x.views/mx)*100) + '%;background:var(--b);opacity:.08;border-radius:var(--s)"></div>' +
+          '<div style="position:relative;z-index:1"><div style="font-weight:700;font-size:12.5px">' + esc(x.name) + '</div></div>' +
+          '<div style="position:relative;z-index:1;text-align:right">' +
+          '<div style="font-weight:900;font-size:18px;color:var(--b)">' + x.conversion_rate + '%</div>' +
+          '<div style="font-size:10px;color:var(--g5)">' + N(x.views) + ' → ' + N(x.conversions) + '</div></div></div>';
+      }).join('');
+    })() +
+    '</div></div>';
+}
 
-// ═══ NEW TEST (THE WIZARD) ═══
-function rNew(){UF=[];
-document.getElementById('m').innerHTML=`<a class="bk" onclick="go('tests')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Voltar</a>
-<div class="ph"><h1>Novo Teste A/B</h1></div>
-<div class="card" style="max-width:680px">
-  <div class="uz" id="uz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');addFiles(event.dataTransfer.files)">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    <h3>Arraste os HTMLs aqui</h3>
-    <p>Solte todos os arquivos .html das variações de uma vez</p>
-    <input type="file" id="fi" style="display:none" multiple accept=".html,.htm" onchange="addFiles(this.files)">
-  </div>
-  <div class="fl" id="fl"></div>
-  <div id="cfg" style="display:none">
-    <div style="margin-top:20px;border-top:1px solid var(--g2);padding-top:20px">
-      <div class="fg"><label>Nome do Teste</label><div class="hn">Só você vê — para organização interna</div><input class="fc" id="n" placeholder="Ex: LP Felipe - Março 2026"></div>
-      <div class="fg"><label>Slug da URL</label><div class="hn">Link de entrada: <strong>${O}/t/<span id="slug-preview">meu-teste</span></strong></div><input class="fc" id="u" placeholder="ex: pg-vendas-test" oninput="document.getElementById('slug-preview').textContent=this.value||'meu-teste'"></div>
-      <details class="coll"><summary>Integrações (GA4 / Meta Pixel)</summary><div class="inner">
-        <div class="grid-2"><div class="fg"><label>GA4 Measurement ID</label><input class="fc" id="ga4" placeholder="G-XXXXXXXXXX"></div><div class="fg"><label>GA4 API Secret</label><div class="hn">GA4 Admin → Fluxo de dados → Measurement Protocol</div><input class="fc" id="gas" placeholder="xxxxxxxxxx"></div></div>
-        <div class="fg"><label>Meta Pixel ID</label><input class="fc" id="mpx" placeholder="123456789"></div>
-        <div class="warn">O GA4 e o Meta Pixel serão injetados automaticamente em cada HTML servido. Não precisa editar nenhum arquivo.</div>
-      </div></details>
-      <details class="coll" style="margin-top:8px"><summary>Página de conversão (opcional)</summary><div class="inner">
-        <div class="fg"><label>URL de conversão</label><div class="hn">Se quiser contar conversão por URL além do GA4</div><input class="fc" id="cv" placeholder="https://site.com/obrigado"></div>
-      </div></details>
-      <div style="display:flex;gap:8px;margin-top:20px"><button class="btn bp" onclick="publish()" id="pub-btn">🚀 Publicar Teste</button><button class="btn bs" onclick="go('tests')">Cancelar</button></div>
-    </div>
-  </div>
-</div>`}
+// ══════════════════════════════════════════════════
+//  TESTS LIST
+// ══════════════════════════════════════════════════
+async function rTests() {
+  const ts = await api('/api/tests');
+  document.getElementById('m').innerHTML =
+    '<div class="ph"><div><h1>Meus Testes</h1><div class="sub">' + ts.length + ' teste' + (ts.length !== 1 ? 's' : '') + '</div></div>' +
+    '<button class="btn bp" onclick="go(\'new\')">+ Novo Teste</button></div>' +
+    '<div class="card">' +
+    (!ts.length
+      ? '<div style="padding:40px;text-align:center"><p style="color:var(--g5);font-size:13px;margin-bottom:14px">Nenhum teste criado ainda.</p><button class="btn bp" onclick="go(\'new\')">Criar Primeiro Teste</button></div>'
+      : '<table><thead><tr><th>Nome</th><th>Variações</th><th>Views</th><th>Conversões</th><th>Taxa</th><th>Status</th><th></th></tr></thead><tbody>' +
+        ts.map(function(t) {
+          return '<tr>' +
+            '<td class="tn" style="cursor:pointer" onclick="go(\'report\',' + t.id + ')">' + esc(t.name) + '</td>' +
+            '<td>' + t.variation_count + '</td><td>' + N(t.total_views) + '</td><td>' + N(t.total_conversions) + '</td>' +
+            '<td style="font-weight:800;color:var(--b)">' + (t.total_views > 0 ? ((t.total_conversions/t.total_views)*100).toFixed(1) : '0.0') + '%</td>' +
+            '<td><span class="badge ' + (t.active ? 'b-on' : 'b-off') + '">' + (t.active ? 'Ativo' : 'Off') + '</span></td>' +
+            '<td class="acts"><button class="btn bs bsm" onclick="go(\'report\',' + t.id + ')">Ver</button>' +
+            '<button class="btn br bsm" onclick="delTest(' + t.id + ')">✕</button></td></tr>';
+        }).join('') +
+        '</tbody></table>') +
+    '</div>';
+}
 
-function addFiles(files){
-  for(const f of files){
-    if(!/\.html?$/i.test(f.name)){toast('Só aceita .html');continue}
-    if(UF.some(x=>x.name===f.name)){toast(f.name+' já adicionado');continue}
+// ══════════════════════════════════════════════════
+//  NEW TEST WIZARD
+// ══════════════════════════════════════════════════
+function rNew() {
+  UF = [];
+  document.getElementById('m').innerHTML =
+    '<a class="bk" onclick="go(\'tests\')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Voltar</a>' +
+    '<div class="ph"><h1>Novo Teste A/B</h1></div>' +
+    '<div class="card" style="max-width:680px">' +
+    '<div class="uz" id="uz" onclick="document.getElementById(\'fi\').click()" ondragover="event.preventDefault();this.classList.add(\'over\')" ondragleave="this.classList.remove(\'over\')" ondrop="event.preventDefault();this.classList.remove(\'over\');addFiles(event.dataTransfer.files)">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+    '<h3>Arraste os HTMLs aqui</h3><p>Solte todos os arquivos .html das variações de uma vez</p>' +
+    '<input type="file" id="fi" style="display:none" multiple accept=".html,.htm" onchange="addFiles(this.files)">' +
+    '</div>' +
+    '<div class="fl" id="fl"></div>' +
+    '<div id="cfg" style="display:none">' +
+    '<div style="margin-top:20px;border-top:1px solid var(--g2);padding-top:20px">' +
+    '<div class="fg"><label>Nome do Teste</label><div class="hn">Só você vê — para organização interna</div><input class="fc" id="tn" placeholder="Ex: LP Felipe — Março 2026"></div>' +
+    '<div class="fg"><label>Slug da URL</label><div class="hn">Link de entrada: <strong>' + O + '/t/<span id="slug-preview">meu-teste</span></strong></div><input class="fc" id="tu" placeholder="ex: pg-vendas-test" oninput="document.getElementById(\'slug-preview\').textContent=this.value||\'meu-teste\'"></div>' +
+    '<details class="coll"><summary>Integrações (GA4 / Meta Pixel)</summary><div class="inner">' +
+    '<div class="grid-2"><div class="fg"><label>GA4 Measurement ID</label><input class="fc" id="ga4" placeholder="G-XXXXXXXXXX"></div>' +
+    '<div class="fg"><label>GA4 API Secret</label><div class="hn">GA4 Admin → Fluxo de dados → Measurement Protocol</div><input class="fc" id="gas" placeholder="xxxxxxxxxx"></div></div>' +
+    '<div class="fg"><label>Meta Pixel ID</label><div class="hn">Deixe em branco para usar o pixel global das Configurações</div><input class="fc" id="mpx" placeholder="123456789 (opcional)"></div>' +
+    '<div class="warn">GA4 e Meta Pixel são injetados automaticamente em cada HTML. Não precisa editar nenhum arquivo.</div>' +
+    '</div></details>' +
+    '<details class="coll" style="margin-top:8px"><summary>Página de conversão (opcional)</summary><div class="inner">' +
+    '<div class="fg"><label>URL de conversão</label><div class="hn">Para contar conversão por URL além do GA4</div><input class="fc" id="cv" placeholder="https://site.com/obrigado"></div>' +
+    '</div></details>' +
+    '<div style="display:flex;gap:8px;margin-top:20px"><button class="btn bp" onclick="publish()" id="pub-btn">🚀 Publicar Teste</button><button class="btn bs" onclick="go(\'tests\')">Cancelar</button></div>' +
+    '</div></div></div>';
+}
+
+function addFiles(files) {
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    if (!/\.html?$/i.test(f.name)) { toast('Só aceita .html', true); continue; }
+    if (UF.some(function(x) { return x.name === f.name; })) { toast(f.name + ' já adicionado', true); continue; }
     UF.push(f);
   }
   renderFiles();
 }
-function rmFile(i){UF.splice(i,1);renderFiles()}
-function renderFiles(){
-  const el=document.getElementById('fl'),cfg=document.getElementById('cfg');
-  if(!UF.length){el.innerHTML='';cfg.style.display='none';return}
-  cfg.style.display='block';
-  const p=Math.floor(100/UF.length),r=100-p*UF.length;
-  el.innerHTML=UF.map((f,i)=>{const pc=i===0?p+r:p;return`<div class="fi"><div class="fn"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${esc(f.name)}<span class="pct">${pc}%</span></div><div style="display:flex;align-items:center;gap:6px"><span class="fs">${(f.size/1024).toFixed(0)}KB</span><button class="fx" onclick="rmFile(${i})">✕</button></div></div>`}).join('');
-  // Auto-suggest name
-  const ni=document.getElementById('n');
-  if(!ni.value)ni.value=`Teste A/B — ${UF.length} variações`;
+function rmFile(i) { UF.splice(i, 1); renderFiles(); }
+function renderFiles() {
+  const el = document.getElementById('fl'), cfg = document.getElementById('cfg');
+  if (!UF.length) { el.innerHTML = ''; cfg.style.display = 'none'; return; }
+  cfg.style.display = 'block';
+  const p = Math.floor(100 / UF.length), r = 100 - p * UF.length;
+  el.innerHTML = UF.map(function(f, i) {
+    const pc = i === 0 ? p + r : p;
+    return '<div class="fi"><div class="fn"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+      esc(f.name) + '<span class="pct">' + pc + '%</span></div>' +
+      '<div style="display:flex;align-items:center;gap:6px"><span class="fs">' + (f.size/1024).toFixed(0) + 'KB</span>' +
+      '<button class="fx" onclick="rmFile(' + i + ')">✕</button></div></div>';
+  }).join('');
+  const ni = document.getElementById('tn');
+  if (ni && !ni.value) ni.value = 'Teste A/B — ' + UF.length + ' variações';
+}
+async function publish() {
+  const name = document.getElementById('tn').value.trim();
+  const uri  = document.getElementById('tu').value.trim();
+  if (!name) { toast('Dê um nome ao teste', true); return; }
+  if (UF.length < 2) { toast('Precisa de pelo menos 2 HTMLs', true); return; }
+  const btn = document.getElementById('pub-btn');
+  btn.textContent = 'Enviando...'; btn.disabled = true;
+  const fd = new FormData();
+  fd.append('name', name);
+  if (uri) fd.append('test_uri', uri);
+  const cv = document.getElementById('cv').value.trim(); if (cv) fd.append('conversion_page_url', cv);
+  const g4 = document.getElementById('ga4').value.trim(); if (g4) fd.append('ga4_measurement_id', g4);
+  const gs = document.getElementById('gas').value.trim(); if (gs) fd.append('ga4_api_secret', gs);
+  const mp = document.getElementById('mpx').value.trim(); if (mp) fd.append('meta_pixel_id', mp);
+  UF.forEach(function(f) { fd.append('pages', f); });
+  try {
+    const r = await fetch('/api/tests', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.error) { toast('Erro: ' + d.error, true); btn.textContent = '🚀 Publicar Teste'; btn.disabled = false; return; }
+    toast('Teste publicado com ' + d.variations.length + ' variações!');
+    go('report', d.id);
+  } catch(e) { toast('Erro: ' + e.message, true); btn.textContent = '🚀 Publicar Teste'; btn.disabled = false; }
 }
 
-async function publish(){
-  const name=document.getElementById('n').value.trim();
-  const uri=document.getElementById('u').value.trim();
-  if(!name){toast('Dê um nome ao teste');return}
-  if(UF.length<2){toast('Precisa de pelo menos 2 HTMLs');return}
-  const btn=document.getElementById('pub-btn');btn.textContent='Enviando...';btn.disabled=true;
-  const fd=new FormData();
-  fd.append('name',name);
-  if(uri)fd.append('test_uri',uri);
-  const cv=document.getElementById('cv').value.trim();if(cv)fd.append('conversion_page_url',cv);
-  const g4=document.getElementById('ga4').value.trim();if(g4)fd.append('ga4_measurement_id',g4);
-  const gs=document.getElementById('gas').value.trim();if(gs)fd.append('ga4_api_secret',gs);
-  const mp=document.getElementById('mpx').value.trim();if(mp)fd.append('meta_pixel_id',mp);
-  UF.forEach(f=>fd.append('pages',f));
-  try{
-    const r=await fetch('/api/tests',{method:'POST',body:fd});const d=await r.json();
-    if(d.error){toast('Erro: '+d.error);btn.textContent='🚀 Publicar Teste';btn.disabled=false;return}
-    toast('Teste publicado com '+d.variations.length+' variações!');go('report',d.id);
-  }catch(e){toast('Erro: '+e.message);btn.textContent='🚀 Publicar Teste';btn.disabled=false}}
+// ══════════════════════════════════════════════════
+//  REPORT PAGE
+// ══════════════════════════════════════════════════
+async function rRpt(id, range) {
+  const r = range || '30';
+  const d = await api('/api/reports/' + id + '?range=' + r);
+  const s = d.summary || {};
+  const url = d.test && d.test.test_uri ? O + '/t/' + d.test.test_uri : '';
 
-// ═══ REPORT ═══
-async function rRpt(id){const d=await api(`/api/reports/${id}?range=30`);const s=d.summary||{};const w=d.variations.reduce((b,v)=>v.conversion_rate>(b?.conversion_rate||0)?v:b,null);
-const url=d.test?.test_uri?`${O}/t/${d.test.test_uri}`:'';
-document.getElementById('m').innerHTML=`<a class="bk" onclick="go('tests')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Voltar</a>
-<div class="ph"><div><h1>${esc(d.test?.name)}</h1><div class="sub">Criado em ${new Date(d.test?.created_at).toLocaleDateString('pt-BR')}</div></div><select class="rs" onchange="loadR(${id},this.value)"><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option><option value="all">Tudo</option></select></div>
-${url?`<div class="tl"><strong style="font-size:10px;color:var(--g5)">LINK DO TESTE:</strong><code>${url}</code><button onclick="navigator.clipboard.writeText('${url}');toast('Copiado!')">Copiar</button></div>`:''}
-<div class="sg" style="margin-top:14px"><div class="sc"><div class="sl">Views</div><div class="sv" id="rv">${N(s.total_views)}</div></div><div class="sc"><div class="sl">Conversões</div><div class="sv green" id="rc">${N(s.total_conversions)}</div></div><div class="sc"><div class="sl">Taxa</div><div class="sv blue" id="rr">${s.overall_conversion_rate||'0.00'}%</div></div><div class="sc"><div class="sl">Vencedora</div><div class="sv" style="font-size:15px;color:var(--gn)">${w?.name||'—'}</div>${w?`<div class="st">${w.conversion_rate}%</div>`:''}</div></div>
-<div class="card" style="margin-bottom:14px"><h3>📈 Performance</h3><div class="cc"><canvas id="ch"></canvas></div></div>
-<div class="card"><h3>📋 Variações</h3><table><thead><tr><th>Nome</th><th>%</th><th>Views</th><th>Conv</th><th>Taxa</th><th>Preview</th></tr></thead><tbody>${d.variations.map(v=>`<tr><td class="tn">${esc(v.name)} ${v.id===w?.id?'<span style="color:var(--gn);font-size:9px">🏆</span>':''}</td><td>${v.percentage}%</td><td>${N(v.views)}</td><td>${N(v.conversions)}</td><td style="font-weight:800;color:var(--b)">${v.conversion_rate}%</td><td>${v.file_path?`<a href="/p/${d.test.id}/${v.id}" target="_blank" class="btn bs bsm">Abrir</a>`:'—'}</td></tr>`).join('')}</tbody></table></div>`;
-if(d.chart?.labels?.length){const ctx=document.getElementById('ch').getContext('2d');if(CH)CH.destroy();CH=new Chart(ctx,{type:'bar',data:{labels:d.chart.labels.map(l=>{const p=l.split('-');return p[2]+'/'+['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+p[1]]}),datasets:d.chart.datasets.map(ds=>({...ds,borderRadius:5,borderSkipped:false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{family:'Montserrat',weight:'600',size:10},usePointStyle:true,pointStyle:'circle'}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Montserrat',weight:'600',size:9},color:'#6B6B6B',maxRotation:45}},y:{grid:{color:'#F0F0F0'},ticks:{font:{family:'Montserrat',weight:'600',size:9},color:'#6B6B6B'}}}}})}}
-async function loadR(id,r){const d=await api(`/api/reports/${id}?range=${r}`);document.getElementById('rv').textContent=N(d.summary?.total_views);document.getElementById('rc').textContent=N(d.summary?.total_conversions);document.getElementById('rr').textContent=(d.summary?.overall_conversion_rate||'0.00')+'%';if(CH&&d.chart?.labels){CH.data.labels=d.chart.labels.map(l=>{const p=l.split('-');return p[2]+'/'+['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+p[1]]});CH.data.datasets=d.chart.datasets.map(ds=>({...ds,borderRadius:5,borderSkipped:false}));CH.update()}}
+  // Banner
+  const sigVars = (d.variations || []).filter(function(v) { return !v.isControl && v.significance && v.significance.confident95; });
+  sigVars.sort(function(a, b) { return (b.significance.uplift || 0) - (a.significance.uplift || 0); });
+  const banner = buildBanner(sigVars[0], s);
 
-// ═══ GA4 CONFIG ═══
-async function rGA4(){const st=await api('/api/ga4/status');
-document.getElementById('m').innerHTML=`<div class="ph"><h1>Google Analytics 4</h1></div>
-<div class="card" style="max-width:600px">
-${st.connected?`<div style="display:flex;align-items:center;gap:10px;padding:14px;background:var(--gl);border-radius:var(--s);margin-bottom:16px"><span style="font-size:20px">✅</span><div><div style="font-weight:700;font-size:13px">Conectado</div><div style="font-size:11px;color:var(--g5)">Property: ${st.property_id} · ${st.client_email}</div></div></div>
-<button class="btn br" onclick="disconnGA4()">Desconectar GA4</button><button class="btn bs" style="margin-left:8px" onclick="fetchGA4()">Testar Conexão</button>
-<div id="ga4-result" style="margin-top:14px"></div>`
-:`<p style="font-size:13px;color:var(--g7);margin-bottom:16px;line-height:1.6">Conecte o GA4 para puxar dados reais de conversão (sessões, usuários, eventos) direto para o dashboard do EasyTest.</p>
-<div class="fg"><label>GA4 Property ID</label><div class="hn">GA4 Admin → Propriedade → ID da propriedade (número)</div><input class="fc" id="ga4pid" placeholder="123456789"></div>
-<div class="fg"><label>Service Account JSON</label><div class="hn">Google Cloud Console → IAM → Service Accounts → Criar chave JSON<br>Depois dê acesso de Leitor ao GA4 para esse service account</div><textarea class="fc" id="ga4sa" rows="6" placeholder='Cole o conteúdo do arquivo .json aqui' style="font-family:'Courier New',monospace;font-size:10px"></textarea></div>
-<button class="btn bp" onclick="connGA4()">Conectar GA4</button>
-<div class="warn" style="margin-top:16px"><strong>Como configurar:</strong><br>1. Acesse console.cloud.google.com → IAM → Service Accounts<br>2. Crie um service account e baixe a chave JSON<br>3. No GA4 Admin → Propriedade → Acesso → adicione o email do service account como Leitor<br>4. Cole o JSON acima e o Property ID</div>`}
-</div>`}
+  // Variation cards
+  const cards = (d.variations || []).map(function(v, i) { return buildVarCard(v, i, d.test && d.test.id); }).join('');
 
-async function connGA4(){
-  const pid=document.getElementById('ga4pid').value.trim();
-  const sa=document.getElementById('ga4sa').value.trim();
-  if(!pid||!sa){toast('Preencha todos os campos');return}
-  try{const r=await api('/api/ga4/connect',{method:'POST',body:{property_id:pid,service_account_json:sa}});
-  if(r.error){toast('Erro: '+r.error);return}toast('GA4 conectado!');rGA4()}catch(e){toast('Erro: '+e.message)}}
-async function disconnGA4(){await api('/api/ga4/disconnect',{method:'DELETE'});toast('Desconectado');rGA4()}
-async function fetchGA4(){
-  document.getElementById('ga4-result').innerHTML='<p style="color:var(--g5);font-size:12px">Buscando dados...</p>';
-  const r=await api('/api/ga4/report?range=30');
-  if(r.error){document.getElementById('ga4-result').innerHTML=`<p style="color:var(--rd);font-size:12px">Erro: ${esc(r.error)}</p>`;return}
-  const g=r.general||[];
-  document.getElementById('ga4-result').innerHTML=`<div class="sg" style="grid-template-columns:repeat(${g.length},1fr)">${g.map(m=>`<div class="sc"><div class="sl">${m.metric}</div><div class="sv">${N(m.value)}</div></div>`).join('')}</div>
-  ${r.events?.length?`<p style="font-size:12px;font-weight:600;margin-bottom:8px">Eventos A/B encontrados: ${r.events.length}</p>
-  <table><thead><tr><th>Evento</th><th>Test ID</th><th>Variação</th><th>Count</th></tr></thead><tbody>${r.events.slice(0,20).map(e=>`<tr><td>${esc(e.event)}</td><td>${esc(e.test_id)}</td><td>${esc(e.variation)}</td><td>${e.count}</td></tr>`).join('')}</tbody></table>`:''}`}
+  // Sample progress
+  const sampleBlock = buildSampleBlock(s, d.variations || []);
 
-async function del(id){if(!confirm('Excluir teste e todos os dados?'))return;await api(`/api/tests/${id}`,{method:'DELETE'});toast('Excluído');go('tests')}
+  // Device breakdown
+  const devices = (d.breakdown && d.breakdown.devices) || [];
+  const maxDev = Math.max.apply(null, devices.map(function(x) { return x.count; }).concat([1]));
+  const devHtml = devices.length
+    ? devices.map(function(dv) {
+        return '<div class="drow"><span class="dlb">' + esc(dv.device) + '</span>' +
+          '<div class="dbar"><div class="dbarf" style="width:' + ((dv.count/maxDev)*100) + '%"></div></div>' +
+          '<span class="dcnt">' + N(dv.count) + '</span></div>';
+      }).join('')
+    : '<p style="font-size:11px;color:var(--g3);padding:8px 0">Sem dados de dispositivo ainda.</p>';
 
-document.addEventListener('DOMContentLoaded',()=>{document.getElementById('ec').textContent=`<script src="${O}/embed.js"><\/script>`;go('dash')});
+  // UTM breakdown
+  const utms = (d.breakdown && d.breakdown.utmSources) || [];
+  const utmHtml = utms.length
+    ? '<table style="margin-top:8px"><thead><tr><th>Fonte</th><th>Meio</th><th>Views</th><th>Conv</th><th>Taxa</th></tr></thead><tbody>' +
+      utms.map(function(u) {
+        return '<tr><td class="tn">' + esc(u.source) + '</td><td style="color:var(--g5)">' + (esc(u.medium) || '—') + '</td>' +
+          '<td>' + N(u.views) + '</td><td>' + N(u.conversions) + '</td>' +
+          '<td style="font-weight:800;color:var(--b)">' + (u.views > 0 ? ((u.conversions/u.views)*100).toFixed(1) : '0.0') + '%</td></tr>';
+      }).join('') + '</tbody></table>'
+    : '<p style="font-size:11px;color:var(--g3);padding:8px 0">Sem dados de UTM ainda. Adicione parâmetros UTM ao link do teste.</p>';
+
+  const testName = d.test ? esc(d.test.name) : '';
+  const testDate = d.test && d.test.created_at ? new Date(d.test.created_at).toLocaleDateString('pt-BR') : '—';
+
+  document.getElementById('m').innerHTML =
+    '<a class="bk" onclick="go(\'tests\')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Voltar</a>' +
+    '<div class="ph">' +
+    '<div><h1>' + testName + '</h1><div class="sub">Criado em ' + testDate + '</div></div>' +
+    '<div class="ph-row">' +
+    '<select class="rs" onchange="rRpt(' + id + ',this.value)">' +
+    '<option value="7"' + (r==='7'?' selected':'') + '>7 dias</option>' +
+    '<option value="30"' + (r==='30'?' selected':'') + '>30 dias</option>' +
+    '<option value="90"' + (r==='90'?' selected':'') + '>90 dias</option>' +
+    '<option value="365"' + (r==='365'?' selected':'') + '>1 ano</option>' +
+    '</select>' +
+    '<a href="/api/reports/' + id + '/export.csv" class="btn bs" download>' +
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+    'CSV</a>' +
+    '<button class="btn br bsm" onclick="delTest(' + id + ')">Excluir</button>' +
+    '</div></div>' +
+    (url ? '<div class="tl"><strong style="font-size:10px;color:var(--g5);white-space:nowrap">LINK DO TESTE:</strong><code>' + url + '</code><button onclick="navigator.clipboard.writeText(\'' + url + '\');toast(\'Copiado!\')">Copiar</button></div>' : '') +
+    '<div class="sg" style="margin-top:14px">' +
+    '<div class="sc"><div class="sl">Views</div><div class="sv">' + N(s.total_views) + '</div></div>' +
+    '<div class="sc"><div class="sl">Conversões</div><div class="sv green">' + N(s.total_conversions) + '</div></div>' +
+    '<div class="sc"><div class="sl">Taxa Geral</div><div class="sv blue">' + (s.overall_conversion_rate || '0.00') + '%</div></div>' +
+    '<div class="sc"><div class="sl">Amostra Necessária</div><div class="sv" style="font-size:16px">' + (s.sample_needed ? '~' + N(s.sample_needed) : '—') + '</div><div class="st">por variação (MDE 20%)</div></div>' +
+    '</div>' +
+    banner +
+    '<div class="vc-grid">' + cards + '</div>' +
+    sampleBlock +
+    '<div class="card" style="margin-bottom:14px"><h3>📈 Visitantes por Dia</h3><div class="cc"><canvas id="ch"></canvas></div></div>' +
+    '<details class="coll"><summary>📱 Breakdown por Dispositivo</summary><div class="inner" style="padding-top:10px">' + devHtml + '</div></details>' +
+    '<details class="coll"><summary>🔗 Breakdown por Fonte (UTM)</summary><div class="inner">' + utmHtml + '</div></details>';
+
+  if (d.chart && d.chart.labels && d.chart.labels.length) {
+    const ctx = document.getElementById('ch').getContext('2d');
+    if (CH) CH.destroy();
+    CH = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: d.chart.labels.map(function(l) {
+          const p = l.split('-');
+          return p[2] + '/' + ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+p[1]];
+        }),
+        datasets: d.chart.datasets.map(function(ds) { return Object.assign({}, ds, { borderRadius: 5, borderSkipped: false }); }),
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { font: { family: 'Montserrat', weight: '600', size: 10 }, usePointStyle: true, pointStyle: 'circle' } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { family: 'Montserrat', weight: '600', size: 9 }, color: '#6B6B6B', maxRotation: 45 } },
+          y: { grid: { color: '#F0F0F0' }, ticks: { font: { family: 'Montserrat', weight: '600', size: 9 }, color: '#6B6B6B' } },
+        },
+      },
+    });
+  }
+}
+
+// ── Variation card ────────────────────────────────
+function buildVarCard(v, i, testId) {
+  const color = COLORS[i % COLORS.length];
+  const isCtrl = v.isControl;
+  const sig = v.significance;
+
+  let sigBadge;
+  if (isCtrl) sigBadge = '<span class="sig sig-ctrl">CONTROLE</span>';
+  else if (sig && sig.confident99) sigBadge = '<span class="sig sig-win99">✓ 99% CONF</span>';
+  else if (sig && sig.confident95) sigBadge = '<span class="sig sig-win">✓ 95% CONF</span>';
+  else if (v.views > 0) sigBadge = '<span class="sig sig-pend">EM ANDAMENTO</span>';
+  else sigBadge = '<span class="sig sig-low">SEM DADOS</span>';
+
+  let upliftHtml = '';
+  if (!isCtrl && sig && sig.uplift !== null && sig.uplift !== undefined) {
+    const up = sig.uplift;
+    upliftHtml = '<div class="upl ' + (up >= 0 ? 'up' : 'dn') + '">' + (up >= 0 ? '+' : '') + up.toFixed(1) + '% vs controle</div>';
+  }
+
+  let confHtml = '';
+  if (!isCtrl && sig) {
+    const conf = Math.min(100, sig.confidence);
+    const barColor = sig.confident99 ? '#064E3B' : sig.confident95 ? '#00C48C' : '#FFB84D';
+    confHtml = '<div class="cb"><div class="cbf" style="width:' + conf + '%;background:' + barColor + '"></div></div>' +
+      '<div class="cbl">' + conf.toFixed(0) + '% confiança</div>';
+  }
+
+  const previewLink = v.file_path && testId
+    ? '<a href="/p/' + testId + '/' + v.id + '" target="_blank" style="font-size:9px;color:var(--b);font-weight:700;text-decoration:none;margin-top:6px;display:inline-block">↗ Preview</a>'
+    : '';
+
+  const winnerClass = sig && (sig.confident95 || sig.confident99) && !isCtrl ? ' vc-winner' : '';
+
+  return '<div class="vc' + winnerClass + '">' +
+    '<div class="vct" style="background:' + color + '"></div>' +
+    '<div class="vcb"><div class="vcn">' + esc(v.name) + '</div>' + sigBadge + '</div>' +
+    '<div class="vcr" style="color:' + color + '">' + v.conversion_rate + '%</div>' +
+    '<div class="vcl">taxa de conversão</div>' +
+    upliftHtml + confHtml +
+    '<div class="vcs">' +
+    '<div><div class="vcsi">VIEWS</div><div class="vcv">' + N(v.views) + '</div></div>' +
+    '<div><div class="vcsi">CONV</div><div class="vcv">' + N(v.conversions) + '</div></div>' +
+    '</div>' + previewLink + '</div>';
+}
+
+// ── Winner / progress banner ──────────────────────
+function buildBanner(bestSig, summary) {
+  if (bestSig) {
+    const sig = bestSig.significance;
+    const conf = sig.confident99 ? '99%' : '95%';
+    const upliftStr = sig.uplift !== null ? ' e <strong>+' + sig.uplift.toFixed(1) + '% de uplift</strong>' : '';
+    return '<div class="wb win"><div class="wi">🏆</div>' +
+      '<div class="wt"><strong>' + esc(bestSig.name) + '</strong> é vencedora com <strong>' + conf + ' de confiança estatística</strong>' + upliftStr + ' sobre o controle.</div></div>';
+  }
+  const need = summary.sample_needed;
+  const views = summary.total_views || 0;
+  if (need && need > 0) {
+    const pct = Math.min(100, Math.round((views / need) * 100));
+    if (pct < 100) {
+      return '<div class="wb pend"><div class="wi">⏳</div>' +
+        '<div class="wt">Em andamento · <strong>' + N(views) + '</strong> de ~<strong>' + N(need) + '</strong> visitantes necessários por variação para atingir significância (progresso: ' + pct + '%)</div></div>';
+    }
+  }
+  if (views > 0) {
+    return '<div class="wb nodiff"><div class="wi">📊</div>' +
+      '<div class="wt">Dados coletados, mas sem diferença estatisticamente significativa entre as variações. Continue rodando.</div></div>';
+  }
+  return '';
+}
+
+// ── Sample progress block ─────────────────────────
+function buildSampleBlock(summary, variations) {
+  const need = summary.sample_needed;
+  const ctrl = variations.find(function(v) { return v.isControl; });
+  if (!need || !ctrl) return '';
+  const pct = Math.min(100, Math.round(((ctrl.views || 0) / need) * 100));
+  if (pct >= 100) return '';
+  return '<div class="spw">' +
+    '<div class="spt">🎯 Progresso da amostra (variação controle)</div>' +
+    '<div class="spd">MDE 20% · 95% de confiança · 80% de poder estatístico</div>' +
+    '<div class="spb"><div class="spbf" style="width:' + pct + '%"></div></div>' +
+    '<div class="spm"><span>' + N(ctrl.views || 0) + ' visitantes coletados</span><span>Meta: ~' + N(need) + '</span></div>' +
+    '</div>';
+}
+
+// ══════════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════════
+async function rSettings() {
+  const [st, settings] = await Promise.all([api('/api/ga4/status'), api('/api/settings')]);
+
+  document.getElementById('m').innerHTML =
+    '<div class="ph"><div><h1>Configurações</h1><div class="sub">Integrações e preferências globais</div></div></div>' +
+    '<div style="max-width:680px;display:flex;flex-direction:column;gap:14px">' +
+
+    // ── Meta CAPI ──
+    '<div class="card">' +
+    '<div class="set-hd"><h3>Meta Conversions API</h3><span class="set-tag">' + (settings.meta_pixel_id ? 'Configurado' : 'Não configurado') + '</span></div>' +
+    '<p class="set-desc">Pixel global para rastreamento server-side em todos os testes. Eventos de view e conversão são enviados automaticamente — sem depender de cookies ou adblockers.</p>' +
+    '<div class="grid-2">' +
+    '<div class="fg"><label>Meta Pixel ID</label><input class="fc" id="s-mpx" placeholder="123456789012345" value="' + esc(settings.meta_pixel_id || '') + '"></div>' +
+    '<div class="fg"><label>Access Token</label><div class="hn">Meta Events Manager → Configurações → Gerar token de acesso</div>' +
+    '<input class="fc" id="s-mat" placeholder="EAAxxxx..." value="' + esc(settings.meta_access_token || '') + '"></div>' +
+    '</div>' +
+    '<div class="fg"><label>Test Event Code <span style="font-weight:500;text-transform:none;font-size:10px;color:var(--g5)">(opcional — debug no Events Manager)</span></label>' +
+    '<input class="fc" id="s-tec" placeholder="TEST12345" value="' + esc(settings.meta_test_event_code || '') + '"></div>' +
+    '<div class="fg"><label>URL base do site</label><div class="hn">Usada nos eventos CAPI como event_source_url. Ex: https://meusite.com</div>' +
+    '<input class="fc" id="s-url" placeholder="https://meusite.com" value="' + esc(settings.site_url || O) + '"></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button class="btn bp" onclick="saveMeta()">Salvar</button>' +
+    (settings.meta_pixel_id ? '<button class="btn br bsm" onclick="clearMeta()">Remover configuração</button>' : '') +
+    '</div>' +
+    (settings.meta_pixel_id
+      ? '<div class="warn" style="margin-top:14px">✅ Pixel configurado: <strong>' + esc(settings.meta_pixel_id) + '</strong>' +
+        (settings.meta_access_token ? ' · Token ativo' : '') +
+        (settings.meta_test_event_code ? ' · Test mode: <strong>' + esc(settings.meta_test_event_code) + '</strong>' : '') + '</div>'
+      : '') +
+    '</div>' +
+
+    // ── GA4 Data API ──
+    '<div class="card">' +
+    '<div class="set-hd"><h3>Google Analytics 4 (Data API)</h3>' +
+    '<span class="set-tag' + (st.connected ? '' : ' off') + '">' + (st.connected ? '✓ Conectado' : 'Desconectado') + '</span></div>' +
+    '<p class="set-desc">Importe métricas reais de sessões, usuários e eventos A/B diretamente do GA4 via Service Account. Útil para cruzar dados server-side com dados do Analytics.</p>' +
+    (st.connected
+      ? '<div class="conn-badge"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' +
+        'Property ' + esc(st.property_id) + ' · ' + esc(st.client_email) + '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<button class="btn bs" onclick="testGA4()">Testar conexão</button>' +
+        '<button class="btn br bsm" onclick="disconnGA4()">Desconectar</button></div>' +
+        '<div id="ga4-result" style="margin-top:12px"></div>'
+      : '<div class="grid-2"><div class="fg"><label>GA4 Property ID</label><div class="hn">GA4 Admin → Propriedade → ID da propriedade (número)</div><input class="fc" id="ga4pid" placeholder="123456789"></div><div></div></div>' +
+        '<div class="fg"><label>Service Account JSON</label>' +
+        '<div class="hn">Google Cloud Console → IAM → Service Accounts → Criar chave JSON<br>GA4 Admin → Propriedade → Acesso → adicionar e-mail do SA como Leitor</div>' +
+        '<textarea class="fc" id="ga4sa" rows="5" placeholder="Cole o conteúdo do arquivo .json aqui" style="font-family:\'Courier New\',monospace;font-size:10px;resize:vertical"></textarea></div>' +
+        '<button class="btn bp" onclick="connGA4()">Conectar GA4</button>') +
+    '</div>' +
+    '</div>';
+}
+
+async function saveMeta() {
+  const data = {
+    meta_pixel_id:        document.getElementById('s-mpx').value.trim() || null,
+    meta_access_token:    document.getElementById('s-mat').value.trim() || null,
+    meta_test_event_code: document.getElementById('s-tec').value.trim() || null,
+    site_url:             document.getElementById('s-url').value.trim() || null,
+  };
+  const r = await api('/api/settings', { method: 'POST', body: data });
+  if (r.saved) { toast('Configurações salvas!'); rSettings(); }
+  else toast('Erro ao salvar', true);
+}
+
+async function clearMeta() {
+  if (!confirm('Remover configurações do Meta CAPI?')) return;
+  await Promise.all(['meta_pixel_id','meta_access_token','meta_test_event_code'].map(function(k) {
+    return api('/api/settings/' + k, { method: 'DELETE' });
+  }));
+  toast('Configurações removidas');
+  rSettings();
+}
+
+async function connGA4() {
+  const pid = document.getElementById('ga4pid') && document.getElementById('ga4pid').value.trim();
+  const sa  = document.getElementById('ga4sa')  && document.getElementById('ga4sa').value.trim();
+  if (!pid || !sa) { toast('Preencha todos os campos', true); return; }
+  const r = await api('/api/ga4/connect', { method: 'POST', body: { property_id: pid, service_account_json: sa } });
+  if (r.error) { toast('Erro: ' + r.error, true); return; }
+  toast('GA4 conectado!');
+  rSettings();
+}
+
+async function disconnGA4() {
+  if (!confirm('Desconectar o GA4?')) return;
+  await api('/api/ga4/disconnect', { method: 'DELETE' });
+  toast('GA4 desconectado');
+  rSettings();
+}
+
+async function testGA4() {
+  const el = document.getElementById('ga4-result');
+  if (!el) return;
+  el.innerHTML = '<p style="font-size:11px;color:var(--g5)">Buscando dados...</p>';
+  const r = await api('/api/ga4/report?range=30');
+  if (r.error) { el.innerHTML = '<p style="color:var(--rd);font-size:12px">Erro: ' + esc(r.error) + '</p>'; return; }
+  const g = r.general || [];
+  el.innerHTML =
+    '<div class="sg" style="grid-template-columns:repeat(' + Math.min(g.length, 4) + ',1fr)">' +
+    g.map(function(m) { return '<div class="sc"><div class="sl">' + esc(m.metric) + '</div><div class="sv">' + N(m.value) + '</div></div>'; }).join('') +
+    '</div>' +
+    (r.events && r.events.length
+      ? '<p style="font-size:11px;font-weight:700;margin:12px 0 6px">Eventos A/B encontrados: ' + r.events.length + '</p>' +
+        '<table><thead><tr><th>Evento</th><th>Test ID</th><th>Variação</th><th>Count</th></tr></thead><tbody>' +
+        r.events.slice(0, 10).map(function(e) {
+          return '<tr><td>' + esc(e.event) + '</td><td>' + esc(e.test_id) + '</td><td>' + esc(e.variation) + '</td><td>' + e.count + '</td></tr>';
+        }).join('') + '</tbody></table>'
+      : '');
+}
+
+// ══════════════════════════════════════════════════
+//  SHARED ACTIONS
+// ══════════════════════════════════════════════════
+async function delTest(id) {
+  if (!confirm('Excluir teste e todos os dados? Esta ação não pode ser desfeita.')) return;
+  await api('/api/tests/' + id, { method: 'DELETE' });
+  toast('Teste excluído');
+  go('tests');
+}
+
+// ══════════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('ec').textContent = '<script src="' + O + '/embed.js"><\/script>';
+  go('dash');
+});
 </script>
 </body>
 </html>
