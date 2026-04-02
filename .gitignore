@@ -4,3 +4,6 @@ db/uploads/*
 !db/uploads/.gitkeep
 *.log
 .DS_Store
+easytest.db
+node_modules
+.env
