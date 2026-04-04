@@ -500,13 +500,31 @@ app.get('/split.js', (req, res) => {
     document.querySelectorAll('a[href]').forEach(function(a){
       try{
         var u=new URL(a.href);
-        // Only inject into external checkout domains (not same origin)
         if(u.hostname!==location.hostname){
           u.searchParams.set('cp_uid',cid);
+          // Also set as utm_content so platforms that only capture standard UTMs still pass it
+          if(!u.searchParams.get('utm_content'))u.searchParams.set('utm_content',cid);
           a.href=u.toString();
         }
       }catch(e){}
     });
+    // Re-inject on DOM mutations (SPAs / lazy-rendered buttons)
+    if(typeof MutationObserver!=='undefined'){
+      var obs=new MutationObserver(function(){
+        document.querySelectorAll('a[href]:not([data-cid])').forEach(function(a){
+          try{
+            var u=new URL(a.href);
+            if(u.hostname!==location.hostname){
+              u.searchParams.set('cp_uid',cid);
+              if(!u.searchParams.get('utm_content'))u.searchParams.set('utm_content',cid);
+              a.href=u.toString();
+              a.setAttribute('data-cid','1');
+            }
+          }catch(e){}
+        });
+      });
+      obs.observe(document.body,{childList:true,subtree:true});
+    }
   }
 
   function applyHtml(html){
