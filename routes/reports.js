@@ -169,34 +169,48 @@ router.get('/:id', (req, res) => {
   const tv = enrichedStats.reduce((s, v) => s + v.views, 0);
   const tc = enrichedStats.reduce((s, v) => s + v.conversions, 0);
 
-  // Funnel data per variation
-  let funnel = null;
-  if (test.funnel_steps) {
-    try {
-      const steps = JSON.parse(test.funnel_steps);
-      const stageNames = ['Visualizações', ...steps.map(s => s.name), 'Conversões'];
-      funnel = {
-        stages: stageNames,
-        variations: enrichedStats.map(v => {
-          const stepCounts = steps.map((_, idx) =>
-            db.prepare('SELECT COUNT(DISTINCT client_id) AS c FROM funnel_events WHERE test_id = ? AND variation_id = ? AND step_index = ?')
-              .get(id, v.id, idx).c || 0
-          );
-          const stageCounts = [v.views, ...stepCounts, v.conversions];
-          const max = stageCounts[0] || 1;
-          return {
-            id: v.id,
-            name: v.name,
-            stages: stageCounts.map((count, i) => ({
-              name: stageNames[i],
-              count,
-              pct: +(max > 0 ? (count / max * 100).toFixed(1) : 0),
-            })),
-          };
-        }),
-      };
-    } catch (_) {}
-  }
+  // Funnel — always built (intermediate steps optional)
+  const midSteps = (() => {
+    try { return test.funnel_steps ? JSON.parse(test.funnel_steps) : []; } catch { return []; }
+  })();
+  const stageNames = ['Visitas', ...midSteps.map(s => s.name), 'Conversões'];
+
+  const varFunnels = enrichedStats.map(v => {
+    const stepCounts = midSteps.map((_, idx) =>
+      db.prepare('SELECT COUNT(DISTINCT client_id) AS c FROM funnel_events WHERE test_id = ? AND variation_id = ? AND step_index = ?')
+        .get(id, v.id, idx).c || 0
+    );
+    const counts = [v.views, ...stepCounts, v.conversions];
+    const max = counts[0] || 1;
+    return {
+      id: v.id,
+      name: v.name,
+      stages: counts.map((count, i) => ({
+        name: stageNames[i],
+        count,
+        pct: +(max > 0 ? (count / max * 100).toFixed(1) : 0),
+      })),
+      abandono: v.views - v.conversions,
+    };
+  });
+
+  // Overall funnel (sum across all variations)
+  const overallCounts = stageNames.map((_, si) =>
+    varFunnels.reduce((sum, v) => sum + (v.stages[si]?.count || 0), 0)
+  );
+  const overallMax = overallCounts[0] || 1;
+  const overallFunnel = {
+    id: 0,
+    name: 'Geral',
+    stages: overallCounts.map((count, i) => ({
+      name: stageNames[i],
+      count,
+      pct: +(overallMax > 0 ? (count / overallMax * 100).toFixed(1) : 0),
+    })),
+    abandono: overallCounts[0] - overallCounts[overallCounts.length - 1],
+  };
+
+  const funnel = { stages: stageNames, overall: overallFunnel, variations: varFunnels };
 
   res.json({
     test,

@@ -502,7 +502,7 @@ async function rRpt(id, range) {
     banner +
     '<div class="vc-grid">' + cards + '</div>' +
     sampleBlock +
-    (d.funnel ? buildFunnelSection(d.funnel) : '') +
+    buildFunnelSection(d.funnel) +
     '<div class="card" style="margin-bottom:14px"><h3>📈 Visitantes por Dia</h3><div class="cc"><canvas id="ch"></canvas></div></div>' +
     '<details class="coll"><summary>📱 Breakdown por Dispositivo</summary><div class="inner" style="padding-top:10px">' + devHtml + '</div></details>' +
     ((clickIds.meta_clicks || clickIds.google_clicks || clickIds.tiktok_clicks)
@@ -569,25 +569,50 @@ function buildFunnelSection(funnel) {
   if (!funnel) return '';
   var html = '<div class="card" style="margin-bottom:14px"><h3>📊 Funil de Conversão</h3>';
 
-  // Comparison table
-  html += '<div class="funnel-cmp" style="margin-bottom:20px;overflow-x:auto"><table><thead><tr><th>Etapa</th>';
+  // ── Geral ─────────────────────────────────────────────
+  var ov = funnel.overall;
+  html += '<div style="margin-bottom:20px">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+    '<span style="font-size:12px;font-weight:800;color:#404040">Geral (todas as variações)</span>' +
+    '<span style="font-size:11px;color:#FF4D4D;font-weight:700;background:#FFECEC;padding:3px 10px;border-radius:20px">🚪 Abandono: ' + N2(ov.abandono) + ' (' + (ov.stages[0].count > 0 ? (ov.abandono / ov.stages[0].count * 100).toFixed(1) : '0') + '%)</span>' +
+    '</div>' +
+    '<div class="funnel-wrap">' + buildFunnelSvg(ov.stages) + '</div>' +
+    '</div>';
+
+  // ── Comparativo ───────────────────────────────────────
+  html += '<details class="coll" open style="margin-bottom:10px"><summary>Comparativo por variação</summary><div class="inner"><div class="funnel-cmp" style="overflow-x:auto"><table><thead><tr><th>Etapa</th>';
   funnel.variations.forEach(function(v) { html += '<th>' + esc(v.name) + '</th>'; });
   html += '</tr></thead><tbody>';
   funnel.stages.forEach(function(stageName, si) {
     html += '<tr><td style="font-weight:700">' + esc(stageName) + '</td>';
     funnel.variations.forEach(function(v) {
       var s = v.stages[si];
-      var bar = si === 0 ? '' : ' <span style="font-size:10px;color:#6B6B6B">(' + s.pct + '%)</span>';
-      html += '<td>' + N2(s.count) + bar + '</td>';
+      var sub = si === 0 ? '' : ' <span style="font-size:10px;color:#6B6B6B">(' + s.pct + '%)</span>';
+      html += '<td>' + N2(s.count) + sub + '</td>';
     });
     html += '</tr>';
   });
-  html += '</tbody></table></div>';
-
-  // Individual funnels per variation
+  // Abandono row
+  html += '<tr style="background:#FFF8F8"><td style="font-weight:700;color:#FF4D4D">Abandono</td>';
   funnel.variations.forEach(function(v) {
-    html += '<div class="funnel-var"><h4>' + esc(v.name) + '</h4><div class="funnel-wrap">' + buildFunnelSvg(v.stages) + '</div></div>';
+    var abanPct = v.stages[0].count > 0 ? (v.abandono / v.stages[0].count * 100).toFixed(1) : '0';
+    html += '<td style="color:#FF4D4D;font-weight:700">' + N2(v.abandono) + ' <span style="font-size:10px;font-weight:500;color:#888">(' + abanPct + '%)</span></td>';
   });
+  html += '</tr></tbody></table></div></div></details>';
+
+  // ── Por variação ──────────────────────────────────────
+  html += '<details class="coll"><summary>Funil por variação</summary><div class="inner">';
+  funnel.variations.forEach(function(v) {
+    var abanPct = v.stages[0].count > 0 ? (v.abandono / v.stages[0].count * 100).toFixed(1) : '0';
+    html += '<div class="funnel-var">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+      '<h4 style="margin:0">' + esc(v.name) + '</h4>' +
+      '<span style="font-size:10px;color:#FF4D4D;font-weight:700">Abandono: ' + N2(v.abandono) + ' (' + abanPct + '%)</span>' +
+      '</div>' +
+      '<div class="funnel-wrap">' + buildFunnelSvg(v.stages) + '</div>' +
+      '</div>';
+  });
+  html += '</div></details>';
 
   html += '</div>';
   return html;
