@@ -96,6 +96,21 @@ function parseUtm(url = '') {
   } catch { return {}; }
 }
 
+// Merge UTMs: current URL params take priority over referer params
+function resolveUtm(req) {
+  const fromUrl    = parseUtm('http://x' + req.url);
+  const referer    = req.headers['referer'] || req.headers['referrer'] || '';
+  const fromReferer = parseUtm(referer);
+  return {
+    utm_source:   fromUrl.utm_source   || fromReferer.utm_source   || null,
+    utm_medium:   fromUrl.utm_medium   || fromReferer.utm_medium   || null,
+    utm_campaign: fromUrl.utm_campaign || fromReferer.utm_campaign || null,
+    utm_term:     fromUrl.utm_term     || fromReferer.utm_term     || null,
+    utm_content:  fromUrl.utm_content  || fromReferer.utm_content  || null,
+    referrer:     referer || null,
+  };
+}
+
 function getClientIp(req) {
   return (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim();
 }
@@ -185,18 +200,17 @@ app.get('/t/:slug', publicLimiter, (req, res) => {
   res.cookie(`cp_t${test.id}`, String(chosen.id), { maxAge: 2592000000, httpOnly: false, sameSite: 'Lax' });
 
   // Capture UTM + device + referrer and update the interaction row
-  const ua      = req.headers['user-agent'] || '';
-  const referer = req.headers['referer'] || req.headers['referrer'] || '';
-  const ip      = getClientIp(req);
-  const utm     = parseUtm(referer);
-  const device  = getDeviceType(ua);
+  const ua     = req.headers['user-agent'] || '';
+  const ip     = getClientIp(req);
+  const utm    = resolveUtm(req);
+  const device = getDeviceType(ua);
 
   db.prepare(`
     UPDATE interactions SET referrer = ?, device_type = ?,
       utm_source = ?, utm_medium = ?, utm_campaign = ?, utm_term = ?, utm_content = ?,
       ip_hash = ?
     WHERE test_id = ? AND client_id = ?
-  `).run(referer || null, device, utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_term, utm.utm_content,
+  `).run(utm.referrer, device, utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_term, utm.utm_content,
          hashIp(ip), test.id, cid);
 
   // GA4 Measurement Protocol — server-side view event
@@ -381,17 +395,16 @@ app.get('*', publicLimiter, (req, res, next) => {
 
   res.cookie(`cp_t${test.id}`, String(chosen.id), { maxAge: 2592000000, httpOnly: false, sameSite: 'Lax' });
 
-  const ua      = req.headers['user-agent'] || '';
-  const referer = req.headers['referer'] || req.headers['referrer'] || '';
-  const ip      = getClientIp(req);
-  const utm     = parseUtm(req.url.includes('?') ? `http://x${req.url}` : referer);
-  const device  = getDeviceType(ua);
+  const ua     = req.headers['user-agent'] || '';
+  const ip     = getClientIp(req);
+  const utm    = resolveUtm(req);
+  const device = getDeviceType(ua);
 
   db.prepare(`
     UPDATE interactions SET referrer = ?, device_type = ?,
       utm_source = ?, utm_medium = ?, utm_campaign = ?, utm_term = ?, utm_content = ?, ip_hash = ?
     WHERE test_id = ? AND client_id = ?
-  `).run(referer || null, device, utm.utm_source, utm.utm_medium, utm.utm_campaign,
+  `).run(utm.referrer, device, utm.utm_source, utm.utm_medium, utm.utm_campaign,
          utm.utm_term, utm.utm_content, hashIp(ip), test.id, cid);
 
   const eventId = buildEventId(test.id, chosen.id, cid);

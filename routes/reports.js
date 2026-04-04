@@ -105,15 +105,50 @@ router.get('/:id', (req, res) => {
     GROUP BY device ORDER BY count DESC
   `).all(id);
 
-  // UTM breakdown (top 10 sources)
+  // UTM breakdown completo — source+medium+campaign top 20
   const utmSources = db.prepare(`
-    SELECT COALESCE(utm_source, 'direct') AS source,
-           COALESCE(utm_medium, '') AS medium,
-           COUNT(*) AS views,
-           COUNT(CASE WHEN type = 'conversion' THEN 1 END) AS conversions
+    SELECT
+      CASE WHEN utm_source IS NULL AND (referrer IS NULL OR referrer = '') THEN 'direct'
+           WHEN utm_source IS NULL THEN 'organic'
+           ELSE utm_source END AS source,
+      COALESCE(utm_medium, '') AS medium,
+      COALESCE(utm_campaign, '') AS campaign,
+      COALESCE(utm_term, '') AS term,
+      COALESCE(utm_content, '') AS content,
+      COUNT(*) AS views,
+      COUNT(CASE WHEN type = 'conversion' THEN 1 END) AS conversions
     FROM interactions WHERE test_id = ? ${df}
-    GROUP BY utm_source, utm_medium
+    GROUP BY utm_source, utm_medium, utm_campaign, utm_term, utm_content
+    ORDER BY views DESC LIMIT 20
+  `).all(id);
+
+  // Campanha breakdown
+  const utmCampaigns = db.prepare(`
+    SELECT
+      COALESCE(utm_campaign, '(sem campanha)') AS campaign,
+      COALESCE(utm_source, 'organic') AS source,
+      COUNT(*) AS views,
+      COUNT(CASE WHEN type = 'conversion' THEN 1 END) AS conversions
+    FROM interactions WHERE test_id = ? AND utm_campaign IS NOT NULL ${df}
+    GROUP BY utm_campaign, utm_source
     ORDER BY views DESC LIMIT 10
+  `).all(id);
+
+  // Canal de tráfego simplificado
+  const trafficChannels = db.prepare(`
+    SELECT
+      CASE
+        WHEN utm_medium IN ('cpc','ppc','paid','paid_social','paid-social') THEN 'Pago'
+        WHEN utm_medium IN ('email','newsletter') THEN 'Email'
+        WHEN utm_medium IN ('social','social-media') THEN 'Social Orgânico'
+        WHEN utm_source IS NULL AND (referrer IS NULL OR referrer = '') THEN 'Direto'
+        WHEN utm_source IS NOT NULL THEN 'Campanha'
+        ELSE 'Orgânico'
+      END AS channel,
+      COUNT(*) AS views,
+      COUNT(CASE WHEN type = 'conversion' THEN 1 END) AS conversions
+    FROM interactions WHERE test_id = ? ${df}
+    GROUP BY channel ORDER BY views DESC
   `).all(id);
 
   const tv = enrichedStats.reduce((s, v) => s + v.views, 0);
@@ -133,7 +168,7 @@ router.get('/:id', (req, res) => {
       labels,
       datasets: Object.values(ds).map(d => ({ ...d, data: labels.map(l => d.data[l] || 0) })),
     },
-    breakdown: { devices, utmSources },
+    breakdown: { devices, utmSources, utmCampaigns, trafficChannels },
   });
 });
 

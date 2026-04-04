@@ -423,14 +423,42 @@ async function rRpt(id, range) {
 
   // UTM breakdown
   const utms = (d.breakdown && d.breakdown.utmSources) || [];
+  const campaigns = (d.breakdown && d.breakdown.utmCampaigns) || [];
+  const channels = (d.breakdown && d.breakdown.trafficChannels) || [];
+
+  const channelHtml = channels.length
+    ? channels.map(function(c) {
+        const maxCh = Math.max.apply(null, channels.map(function(x) { return x.views; }).concat([1]));
+        const rate = c.views > 0 ? ((c.conversions/c.views)*100).toFixed(1) : '0.0';
+        return '<div class="drow"><span class="dlb" style="min-width:110px">' + esc(c.channel) + '</span>' +
+          '<div class="dbar"><div class="dbarf" style="width:' + ((c.views/maxCh)*100) + '%"></div></div>' +
+          '<span style="font-size:10px;font-weight:700;color:var(--b);min-width:36px;text-align:right">' + rate + '%</span>' +
+          '<span class="dcnt">' + N(c.views) + '</span></div>';
+      }).join('')
+    : '<p style="font-size:11px;color:var(--g3);padding:8px 0">Sem dados de canal ainda.</p>';
+
   const utmHtml = utms.length
-    ? '<table style="margin-top:8px"><thead><tr><th>Fonte</th><th>Meio</th><th>Views</th><th>Conv</th><th>Taxa</th></tr></thead><tbody>' +
+    ? '<table style="margin-top:8px"><thead><tr><th>Fonte</th><th>Meio</th><th>Campanha</th><th>Views</th><th>Conv</th><th>Taxa</th></tr></thead><tbody>' +
       utms.map(function(u) {
-        return '<tr><td class="tn">' + esc(u.source) + '</td><td style="color:var(--g5)">' + (esc(u.medium) || '—') + '</td>' +
+        const rate = u.views > 0 ? ((u.conversions/u.views)*100).toFixed(1) : '0.0';
+        return '<tr>' +
+          '<td class="tn">' + esc(u.source) + '</td>' +
+          '<td style="color:var(--g5)">' + (esc(u.medium) || '—') + '</td>' +
+          '<td style="color:var(--g5)">' + (esc(u.campaign) || '—') + '</td>' +
           '<td>' + N(u.views) + '</td><td>' + N(u.conversions) + '</td>' +
-          '<td style="font-weight:800;color:var(--b)">' + (u.views > 0 ? ((u.conversions/u.views)*100).toFixed(1) : '0.0') + '%</td></tr>';
+          '<td style="font-weight:800;color:var(--b)">' + rate + '%</td></tr>';
       }).join('') + '</tbody></table>'
     : '<p style="font-size:11px;color:var(--g3);padding:8px 0">Sem dados de UTM ainda. Adicione parâmetros UTM ao link do teste.</p>';
+
+  const campaignHtml = campaigns.length
+    ? '<table style="margin-top:8px"><thead><tr><th>Campanha</th><th>Fonte</th><th>Views</th><th>Conv</th><th>Taxa</th></tr></thead><tbody>' +
+      campaigns.map(function(c) {
+        const rate = c.views > 0 ? ((c.conversions/c.views)*100).toFixed(1) : '0.0';
+        return '<tr><td class="tn">' + esc(c.campaign) + '</td><td style="color:var(--g5)">' + esc(c.source) + '</td>' +
+          '<td>' + N(c.views) + '</td><td>' + N(c.conversions) + '</td>' +
+          '<td style="font-weight:800;color:var(--b)">' + rate + '%</td></tr>';
+      }).join('') + '</tbody></table>'
+    : '<p style="font-size:11px;color:var(--g3);padding:8px 0">Sem campanhas com UTM registradas ainda.</p>';
 
   const testName = d.test ? esc(d.test.name) : '';
   const testDate = d.test && d.test.created_at ? new Date(d.test.created_at).toLocaleDateString('pt-BR') : '—';
@@ -467,7 +495,9 @@ async function rRpt(id, range) {
     sampleBlock +
     '<div class="card" style="margin-bottom:14px"><h3>📈 Visitantes por Dia</h3><div class="cc"><canvas id="ch"></canvas></div></div>' +
     '<details class="coll"><summary>📱 Breakdown por Dispositivo</summary><div class="inner" style="padding-top:10px">' + devHtml + '</div></details>' +
-    '<details class="coll"><summary>🔗 Breakdown por Fonte (UTM)</summary><div class="inner">' + utmHtml + '</div></details>';
+    '<details class="coll"><summary>📡 Canal de Tráfego</summary><div class="inner" style="padding-top:10px">' + channelHtml + '</div></details>' +
+    '<details class="coll"><summary>🎯 Campanhas (UTM)</summary><div class="inner">' + campaignHtml + '</div></details>' +
+    '<details class="coll"><summary>🔗 Fontes Detalhadas (UTM)</summary><div class="inner">' + utmHtml + '</div></details>';
 
   if (d.chart && d.chart.labels && d.chart.labels.length) {
     const ctx = document.getElementById('ch').getContext('2d');
