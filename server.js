@@ -463,49 +463,51 @@ app.get('/split.js', (req, res) => {
     var v=u.searchParams.get(k);if(v)params[k]=v;
   });
   if(vid)params.vid=vid;
-
   var qs=Object.keys(params).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);}).join('&');
 
-  function applyHtml(html){
-    // Parse the returned HTML and replace <head> and <body> contents
-    var parser=new DOMParser();
-    var doc=parser.parseFromString(html,'text/html');
+  // Hide page while swapping to avoid flash
+  document.documentElement.style.visibility='hidden';
 
-    // Replace <title>
-    if(doc.title) document.title=doc.title;
-
-    // Replace <body> content
-    var newBody=doc.body;
-    if(newBody){
-      document.body.innerHTML=newBody.innerHTML;
-      // Copy body attributes (class, style, etc.)
-      Array.from(newBody.attributes).forEach(function(a){document.body.setAttribute(a.name,a.value);});
-    }
-
-    // Inject <head> scripts and styles that aren't already present
-    Array.from(doc.head.children).forEach(function(el){
-      if(el.tagName==='SCRIPT'){
-        var s=document.createElement('script');
-        if(el.src)s.src=el.src;else s.textContent=el.textContent;
-        if(el.type)s.type=el.type;
-        document.head.appendChild(s);
-      } else if(el.tagName==='STYLE'||el.tagName==='LINK'){
-        document.head.appendChild(el.cloneNode(true));
-      }
+  function execScripts(el){
+    Array.from(el.querySelectorAll('script')).forEach(function(old){
+      var s=document.createElement('script');
+      Array.from(old.attributes).forEach(function(a){s.setAttribute(a.name,a.value);});
+      s.textContent=old.textContent;
+      old.parentNode.replaceChild(s,old);
     });
   }
 
+  function applyHtml(html){
+    var parser=new DOMParser();
+    var doc=parser.parseFromString(html,'text/html');
+    // Replace title
+    document.title=doc.title||document.title;
+    // Replace body
+    document.body.innerHTML=doc.body.innerHTML;
+    Array.from(doc.body.attributes).forEach(function(a){document.body.setAttribute(a.name,a.value);});
+    // Inject head styles/links from variation
+    Array.from(doc.head.children).forEach(function(el){
+      if(el.tagName==='LINK'||el.tagName==='STYLE'){
+        document.head.appendChild(el.cloneNode(true));
+      }
+    });
+    // Re-execute scripts (innerHTML doesn't run them)
+    execScripts(document.body);
+    document.documentElement.style.visibility='';
+  }
+
   fetch(H+'/api/split/'+SL+'?'+qs,{credentials:'omit',mode:'cors'})
-    .then(function(r){if(!r.ok)throw new Error('status '+r.status);return r.json();})
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(function(d){
-      if(!d.html)return;
+      if(!d.html){document.documentElement.style.visibility='';return;}
       sc('cp_t_'+SL,String(d.variation_id),30);
       if(d.cid)sc('cp_uid',d.cid,30);
       applyHtml(d.html);
-      window.dataLayer=window.dataLayer||[];
-      window.dataLayer.push({event:'easytest_variation',easytest_variation:d.variation_name,easytest_test:SL});
     })
-    .catch(function(e){console.warn('[EasyTest] split falhou:',e.message);});
+    .catch(function(e){
+      document.documentElement.style.visibility='';
+      console.warn('[EasyTest]',e.message);
+    });
 })();`);
 });
 
