@@ -449,7 +449,12 @@ app.get('/split.js', (req, res) => {
 (function(){
   var SL=${JSON.stringify(slug)};
   if(!SL) return;
-  var H=${JSON.stringify(host)};
+  // Auto-detect host from where this script was loaded — no env var needed
+  var H=(function(){
+    var s=document.currentScript&&document.currentScript.src;
+    if(s)try{var u=new URL(s);return u.protocol+'//'+u.host;}catch(e){}
+    return ${JSON.stringify(host)};
+  })();
 
   function ck(n){var a=n+'=',d=document.cookie,c=d.split(';');for(var i=0;i<c.length;i++){var s=c[i].trim();if(s.indexOf(a)===0)return s.substring(a.length);}return '';}
   function sc(n,v,days){document.cookie=n+'='+v+';max-age='+(days*86400)+';path=/;SameSite=Lax';}
