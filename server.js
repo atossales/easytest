@@ -369,6 +369,134 @@ ${pixelExtraEvents}
   res.type('html').send(html);
 });
 
+// ── /api/split/:slug — Client-side split API ─────────────────────────────
+// Called by split.js running on the client's own domain.
+// Returns the HTML of the assigned variation so the client can replace content
+// without any redirect — URL stays as tanajuras.com.
+app.get('/api/split/:slug', publicLimiter, (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET');
+
+  const db   = getDb();
+  const test = db.prepare('SELECT * FROM tests WHERE test_uri = ? AND active = 1').get(req.params.slug);
+  if (!test) return res.status(404).json({ error: 'Teste não encontrado' });
+
+  // Visitor ID from query (sent by split.js reading its own cookie)
+  let cid = req.query.cid || req.cookies?.cp_uid;
+  if (!cid) cid = uuidv4();
+
+  // Sticky: if already assigned, reuse
+  const stickyVid = req.query.vid ? +req.query.vid : null;
+  if (stickyVid) {
+    const sticky = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(stickyVid, test.id);
+    if (sticky?.file_path) {
+      const fp2 = path.resolve(UPLOADS, path.basename(sticky.file_path));
+      if (fp2.startsWith(UPLOADS) && fs.existsSync(fp2)) {
+        let html2 = fs.readFileSync(fp2, 'utf8');
+        if (test.head_snippet && html2.includes('</head>')) html2 = html2.replace('</head>', test.head_snippet + '\n</head>');
+        if (test.body_snippet && html2.includes('</body>')) html2 = html2.replace('</body>', test.body_snippet + '\n</body>');
+        return res.json({ html: html2, variation_id: sticky.id, variation_name: sticky.name, cid });
+      }
+    }
+  }
+
+  const chosen = assignVariation(db, test, cid);
+  if (!chosen) return res.status(500).json({ error: 'Nenhuma variação disponível' });
+
+  // Capture UTM + device from query params passed by split.js
+  const ua     = req.headers['user-agent'] || '';
+  const ip     = getClientIp(req);
+  const device = getDeviceType(ua);
+  const bot    = isBot(ua) ? 1 : 0;
+
+  // UTMs are passed as query params by the split.js (captured from the client page URL)
+  const qp = req.query;
+  db.prepare(`
+    UPDATE interactions SET referrer = ?, device_type = ?,
+      utm_source = ?, utm_medium = ?, utm_campaign = ?, utm_term = ?, utm_content = ?,
+      fbclid = ?, gclid = ?, ttclid = ?, ip_hash = ?, is_bot = ?
+    WHERE test_id = ? AND client_id = ?
+  `).run(qp.ref || null, device,
+         qp.utm_source || null, qp.utm_medium || null, qp.utm_campaign || null,
+         qp.utm_term || null, qp.utm_content || null,
+         qp.fbclid || null, qp.gclid || null, qp.ttclid || null,
+         hashIp(ip), bot, test.id, cid);
+
+  const fp = path.resolve(UPLOADS, path.basename(chosen.file_path));
+  if (!fp.startsWith(UPLOADS) || !fs.existsSync(fp)) {
+    return res.status(404).json({ error: 'Arquivo da variação não encontrado' });
+  }
+
+  let html = fs.readFileSync(fp, 'utf8');
+  if (test.head_snippet && html.includes('</head>')) html = html.replace('</head>', test.head_snippet + '\n</head>');
+  if (test.body_snippet && html.includes('</body>')) html = html.replace('</body>', test.body_snippet + '\n</body>');
+
+  logger.debug('Split API', { slug: req.params.slug, variation: chosen.name, cid: cid.slice(0, 8) });
+  res.json({ html, variation_id: chosen.id, variation_name: chosen.name, cid });
+});
+
+// ── /split.js — Script to embed on client's site ──────────────────────────
+// Usage: <script src="https://EASYTEST_HOST/split.js?test=meu-slug"></script>
+// Runs on the client domain, fetches variation HTML, replaces page content.
+app.get('/split.js', (req, res) => {
+  const host = SITE_URL || getSetting('site_url') || (req.protocol + '://' + req.get('host'));
+  const slug = req.query.test || '';
+
+  res.type('application/javascript').send(`
+(function(){
+  if(!${JSON.stringify(slug)}) return;
+  var H=${JSON.stringify(host)},SL=${JSON.stringify(slug)};
+
+  // Read cookie helper
+  function ck(n){var a=n+'=',d=decodeURIComponent(document.cookie),c=d.split(';');for(var i=0;i<c.length;i++){var s=c[i].trim();if(s.indexOf(a)===0)return s.substring(a.length);}return '';}
+  // Write cookie helper
+  function sc(n,v,days){document.cookie=n+'='+v+';max-age='+(days*86400)+';path=/;SameSite=Lax';}
+
+  // Get or create visitor ID
+  var cid=ck('cp_uid')||(function(){var id=(crypto&&crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).substr(2,16));sc('cp_uid',id,30);return id;})();
+
+  // Get sticky variation if already assigned
+  var vidKey='cp_t_'+SL, vid=ck(vidKey);
+
+  // Collect UTMs and click IDs from current URL
+  var u=new URL(location.href);
+  var params={
+    cid:cid,
+    ref:document.referrer||'',
+    utm_source:u.searchParams.get('utm_source')||'',
+    utm_medium:u.searchParams.get('utm_medium')||'',
+    utm_campaign:u.searchParams.get('utm_campaign')||'',
+    utm_term:u.searchParams.get('utm_term')||'',
+    utm_content:u.searchParams.get('utm_content')||'',
+    fbclid:u.searchParams.get('fbclid')||'',
+    gclid:u.searchParams.get('gclid')||'',
+    ttclid:u.searchParams.get('ttclid')||''
+  };
+  if(vid) params.vid=vid;
+
+  // Build query string
+  var qs=Object.keys(params).filter(function(k){return params[k];}).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);}).join('&');
+
+  // Fetch variation from EasyTest
+  fetch(H+'/api/split/'+SL+'?'+qs,{credentials:'omit'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.html) return;
+      // Save sticky cookie
+      sc('cp_t_'+SL, d.variation_id, 30);
+      sc('cp_uid', d.cid||cid, 30);
+      // Replace entire page content
+      document.open();
+      document.write(d.html);
+      document.close();
+      // Push variation name to dataLayer for GTM
+      window.dataLayer=window.dataLayer||[];
+      window.dataLayer.push({event:'easytest_variation',easytest_variation:d.variation_name,easytest_test:SL});
+    })
+    .catch(function(){/* fail silently — original page stays */});
+})();`);
+});
+
 // ── /embed.js ─────────────────────────────────────────────────────────────
 app.get('/embed.js', (req, res) => {
   const h = SITE_URL || getSetting('site_url') || (req.protocol + '://' + req.get('host'));
