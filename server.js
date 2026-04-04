@@ -260,6 +260,32 @@ app.get('/p/:tid/:vid', publicLimiter, (req, res) => {
   const cid     = req.cookies?.cp_uid || uuidv4();
   const eventId = buildEventId(test.id, v.id, cid);
 
+  // Inject custom head snippet
+  if (test.head_snippet) {
+    if (html.includes('</head>')) html = html.replace('</head>', test.head_snippet + '\n</head>');
+    else html = test.head_snippet + '\n' + html;
+  }
+
+  // Inject custom body snippet
+  if (test.body_snippet) {
+    if (html.includes('</body>')) html = html.replace('</body>', test.body_snippet + '\n</body>');
+    else html += '\n' + test.body_snippet;
+  }
+
+  // Build Meta Pixel standard event calls
+  const ALLOWED_PIXEL_EVENTS = new Set([
+    'ViewContent','Search','AddToCart','AddToWishlist','InitiateCheckout','AddPaymentInfo',
+    'Purchase','Lead','CompleteRegistration','Contact','CustomizeProduct','Donate',
+    'FindLocation','Schedule','StartTrial','SubmitApplication','Subscribe',
+  ]);
+  let pixelExtraEvents = '';
+  if (test.meta_pixel_events) {
+    try {
+      const evts = JSON.parse(test.meta_pixel_events);
+      pixelExtraEvents = evts.filter(e => ALLOWED_PIXEL_EVENTS.has(e)).map(e => `  fbq('track','${e}');`).join('\n');
+    } catch {}
+  }
+
   const tracking = `
 <!-- EasyTest Tracking -->
 <script>
@@ -290,6 +316,7 @@ app.get('/p/:tid/:vid', publicLimiter, (req, res) => {
   !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
   fbq('init','${test.meta_pixel_id}');
   fbq('track','PageView');
+${pixelExtraEvents}
   fbq('trackCustom','ABTestView',{
     test_id:'${test.id}',
     variation:'${v.name.replace(/'/g,"\\'")}',

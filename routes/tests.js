@@ -69,7 +69,7 @@ router.get('/:id', (req, res) => {
 router.post('/', upload.array('pages', 30), (req, res) => {
   const db    = getDb();
   const files = req.files || [];
-  const { name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, custom_domain } = req.body;
+  const { name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, custom_domain, head_snippet, body_snippet, meta_pixel_events } = req.body;
 
   if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
   if (files.length < 2) return res.status(400).json({ error: 'Envie pelo menos 2 arquivos HTML' });
@@ -78,18 +78,19 @@ router.post('/', upload.array('pages', 30), (req, res) => {
   const domain = custom_domain?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '') || null;
   const pct    = Math.floor(100 / files.length);
   const rem    = 100 - pct * files.length;
+  const pixelEventsJson = meta_pixel_events ? (typeof meta_pixel_events === 'string' ? meta_pixel_events : JSON.stringify(meta_pixel_events)) : null;
 
   const tx = db.transaction(() => {
     const r = db.prepare(`
-      INSERT INTO tests (name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, custom_domain)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(name.trim(), slug, conversion_page_url || null, ga4_measurement_id || null, ga4_api_secret || null, meta_pixel_id || null, domain);
+      INSERT INTO tests (name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, custom_domain, head_snippet, body_snippet, meta_pixel_events)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(name.trim(), slug, conversion_page_url || null, ga4_measurement_id || null, ga4_api_secret || null, meta_pixel_id || null, domain, head_snippet || null, body_snippet || null, pixelEventsJson);
 
     const tid = r.lastInsertRowid;
     const ins = db.prepare('INSERT INTO variations (name, percentage, remaining, test_id, file_path, file_original) VALUES (?,?,?,?,?,?)');
 
     files.forEach((f, i) => {
-      const autoName = extractTitle(f.path) || f.originalname.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      const autoName = f.originalname.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
       const p = i === 0 ? pct + rem : pct;
       ins.run(autoName, p, Math.max(1, Math.floor(p / 10)), tid, f.filename, f.originalname);
     });
@@ -146,17 +147,21 @@ router.put('/:id', (req, res) => {
   const current = db.prepare('SELECT * FROM tests WHERE id = ?').get(req.params.id);
   if (!current) return res.status(404).json({ error: 'Não encontrado' });
 
-  const { name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, active, custom_domain } = req.body;
+  const { name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, active, custom_domain, head_snippet, body_snippet, meta_pixel_events } = req.body;
 
   let slug   = test_uri ? sanitize(test_uri) : current.test_uri;
   if (slug !== current.test_uri) slug = uniqueSlug(db, slug);
   const domain = custom_domain?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '') || null;
+  const pixelEventsJson = meta_pixel_events !== undefined
+    ? (meta_pixel_events ? (typeof meta_pixel_events === 'string' ? meta_pixel_events : JSON.stringify(meta_pixel_events)) : null)
+    : current.meta_pixel_events;
 
   db.prepare(`
     UPDATE tests SET name = ?, test_uri = ?, conversion_page_url = ?, ga4_measurement_id = ?,
-    ga4_api_secret = ?, meta_pixel_id = ?, active = ?, custom_domain = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    ga4_api_secret = ?, meta_pixel_id = ?, active = ?, custom_domain = ?,
+    head_snippet = ?, body_snippet = ?, meta_pixel_events = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
   `).run(name, slug, conversion_page_url, ga4_measurement_id || null, ga4_api_secret || null,
-         meta_pixel_id || null, active ?? 1, domain, req.params.id);
+         meta_pixel_id || null, active ?? 1, domain, head_snippet || null, body_snippet || null, pixelEventsJson, req.params.id);
 
   const test = db.prepare('SELECT * FROM tests WHERE id = ?').get(req.params.id);
   test.variations = db.prepare('SELECT * FROM variations WHERE test_id = ?').all(req.params.id);

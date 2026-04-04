@@ -279,6 +279,7 @@ async function rTests() {
             '<td style="font-weight:800;color:var(--b)">' + (t.total_views > 0 ? ((t.total_conversions/t.total_views)*100).toFixed(1) : '0.0') + '%</td>' +
             '<td><span class="badge ' + (t.active ? 'b-on' : 'b-off') + '">' + (t.active ? 'Ativo' : 'Off') + '</span></td>' +
             '<td class="acts"><button class="btn bs bsm" onclick="go(\'report\',' + t.id + ')">Ver</button>' +
+            '<button class="btn bs bsm" onclick="rEdit(' + t.id + ')">✏️</button>' +
             '<button class="btn br bsm" onclick="delTest(' + t.id + ')">✕</button></td></tr>';
         }).join('') +
         '</tbody></table>') +
@@ -308,10 +309,21 @@ function rNew() {
     '<div class="grid-2"><div class="fg"><label>GA4 Measurement ID</label><input class="fc" id="ga4" placeholder="G-XXXXXXXXXX"></div>' +
     '<div class="fg"><label>GA4 API Secret</label><div class="hn">GA4 Admin → Fluxo de dados → Measurement Protocol</div><input class="fc" id="gas" placeholder="xxxxxxxxxx"></div></div>' +
     '<div class="fg"><label>Meta Pixel ID</label><div class="hn">Deixe em branco para usar o pixel global das Configurações</div><input class="fc" id="mpx" placeholder="123456789 (opcional)"></div>' +
+    '<div class="fg"><label>Eventos Meta Pixel</label><div class="hn">Selecione quais eventos disparar quando o visitante ver a página</div>' +
+    '<div id="mpx-events" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;margin-top:6px">' + buildPixelEventsHtml([]) + '</div></div>' +
     '<div class="warn">GA4 e Meta Pixel são injetados automaticamente em cada HTML. Não precisa editar nenhum arquivo.</div>' +
     '</div></details>' +
     '<details class="coll" style="margin-top:8px"><summary>Página de conversão (opcional)</summary><div class="inner">' +
     '<div class="fg"><label>URL de conversão</label><div class="hn">Para contar conversão por URL além do GA4</div><input class="fc" id="cv" placeholder="https://site.com/obrigado"></div>' +
+    '</div></details>' +
+    '<details class="coll" style="margin-top:8px"><summary>Domínio personalizado (opcional)</summary><div class="inner">' +
+    '<div class="fg"><label>Custom Domain</label><div class="hn">Ex: teste.cliente.com.br — aponte o DNS para este servidor primeiro</div><input class="fc" id="cd" placeholder="teste.cliente.com.br"></div>' +
+    '</div></details>' +
+    '<details class="coll" style="margin-top:8px"><summary>Snippets personalizados (head / body)</summary><div class="inner">' +
+    '<div class="fg"><label>Snippet no &lt;head&gt;</label><div class="hn">Inserido antes de &lt;/head&gt; em todos os HTMLs do teste</div>' +
+    '<textarea class="fc" id="hs" rows="4" placeholder="<!-- ex: Google Tag Manager, scripts de chat -->"></textarea></div>' +
+    '<div class="fg"><label>Snippet no &lt;body&gt;</label><div class="hn">Inserido antes de &lt;/body&gt; em todos os HTMLs do teste</div>' +
+    '<textarea class="fc" id="bsnip" rows="4" placeholder="<!-- ex: widget de chat, scripts de analytics -->"></textarea></div>' +
     '</div></details>' +
     '<div style="display:flex;gap:8px;margin-top:20px"><button class="btn bp" onclick="publish()" id="pub-btn">🚀 Publicar Teste</button><button class="btn bs" onclick="go(\'tests\')">Cancelar</button></div>' +
     '</div></div></div>';
@@ -356,6 +368,11 @@ async function publish() {
   const g4 = document.getElementById('ga4').value.trim(); if (g4) fd.append('ga4_measurement_id', g4);
   const gs = document.getElementById('gas').value.trim(); if (gs) fd.append('ga4_api_secret', gs);
   const mp = document.getElementById('mpx').value.trim(); if (mp) fd.append('meta_pixel_id', mp);
+  const cd = document.getElementById('cd'); if (cd && cd.value.trim()) fd.append('custom_domain', cd.value.trim());
+  const hs = document.getElementById('hs'); if (hs && hs.value.trim()) fd.append('head_snippet', hs.value.trim());
+  const bsnip = document.getElementById('bsnip'); if (bsnip && bsnip.value.trim()) fd.append('body_snippet', bsnip.value.trim());
+  const selectedEvents = getSelectedPixelEvents();
+  if (selectedEvents.length) fd.append('meta_pixel_events', JSON.stringify(selectedEvents));
   UF.forEach(function(f) { fd.append('pages', f); });
   try {
     const r = await fetch('/api/tests', { method: 'POST', body: fd });
@@ -373,7 +390,9 @@ async function rRpt(id, range) {
   const r = range || '30';
   const d = await api('/api/reports/' + id + '?range=' + r);
   const s = d.summary || {};
-  const url = d.test && d.test.test_uri ? O + '/t/' + d.test.test_uri : '';
+  const url = d.test && d.test.custom_domain
+    ? 'https://' + d.test.custom_domain
+    : (d.test && d.test.test_uri ? O + '/t/' + d.test.test_uri : '');
 
   // Banner
   const sigVars = (d.variations || []).filter(function(v) { return !v.isControl && v.significance && v.significance.confident95; });
@@ -425,6 +444,7 @@ async function rRpt(id, range) {
     '<a href="/api/reports/' + id + '/export.csv" class="btn bs" download>' +
     '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
     'CSV</a>' +
+    '<button class="btn bs bsm" onclick="rEdit(' + id + ')">✏️ Editar</button>' +
     '<button class="btn br bsm" onclick="delTest(' + id + ')">Excluir</button>' +
     '</div></div>' +
     (url ? '<div class="tl"><strong style="font-size:10px;color:var(--g5);white-space:nowrap">LINK DO TESTE:</strong><code>' + url + '</code><button onclick="navigator.clipboard.writeText(\'' + url + '\');toast(\'Copiado!\')">Copiar</button></div>' : '') +
@@ -661,6 +681,102 @@ async function testGA4() {
           return '<tr><td>' + esc(e.event) + '</td><td>' + esc(e.test_id) + '</td><td>' + esc(e.variation) + '</td><td>' + e.count + '</td></tr>';
         }).join('') + '</tbody></table>'
       : '');
+}
+
+// ══════════════════════════════════════════════════
+//  META PIXEL EVENTS HELPER
+// ══════════════════════════════════════════════════
+const PIXEL_EVENTS = ['ViewContent','Lead','Purchase','AddToCart','InitiateCheckout',
+  'AddPaymentInfo','CompleteRegistration','Contact','CustomizeProduct','Donate',
+  'FindLocation','Schedule','StartTrial','SubmitApplication','Subscribe','Search'];
+
+function buildPixelEventsHtml(selected) {
+  return PIXEL_EVENTS.map(function(e) {
+    const chk = selected && selected.indexOf(e) >= 0 ? ' checked' : '';
+    return '<label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;cursor:pointer">' +
+      '<input type="checkbox" name="pixel_event" value="' + e + '"' + chk + '>' + e + '</label>';
+  }).join('');
+}
+
+function getSelectedPixelEvents() {
+  return Array.from(document.querySelectorAll('input[name="pixel_event"]:checked')).map(function(el) { return el.value; });
+}
+
+// ══════════════════════════════════════════════════
+//  EDIT TEST
+// ══════════════════════════════════════════════════
+async function rEdit(id) {
+  const d = await api('/api/tests/' + id);
+  if (!d || d.error) { toast('Erro ao carregar teste', true); return; }
+  const selectedEvents = d.meta_pixel_events ? JSON.parse(d.meta_pixel_events) : [];
+
+  document.querySelector('.sb a[data-p]') && document.querySelectorAll('.sb a[data-p]').forEach(function(a) { a.classList.remove('on'); });
+
+  document.getElementById('m').innerHTML =
+    '<a class="bk" onclick="go(\'report\',' + id + ')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Voltar</a>' +
+    '<div class="ph"><h1>Editar Teste</h1></div>' +
+    '<div class="card" style="max-width:680px">' +
+    '<div class="fg"><label>Nome do Teste</label><input class="fc" id="e-name" value="' + esc(d.name) + '"></div>' +
+    '<div class="fg"><label>Slug da URL</label><div class="hn">Link: <strong>' + O + '/t/<span id="e-slug-preview">' + esc(d.test_uri) + '</span></strong></div>' +
+    '<input class="fc" id="e-uri" value="' + esc(d.test_uri) + '" oninput="document.getElementById(\'e-slug-preview\').textContent=this.value||\'\'"></div>' +
+    '<div class="fg"><label>Status</label>' +
+    '<select class="fc" id="e-active"><option value="1"' + (d.active ? ' selected' : '') + '>Ativo</option><option value="0"' + (!d.active ? ' selected' : '') + '>Pausado</option></select></div>' +
+
+    '<details class="coll" open><summary>Integrações (GA4 / Meta Pixel)</summary><div class="inner">' +
+    '<div class="grid-2"><div class="fg"><label>GA4 Measurement ID</label><input class="fc" id="e-ga4" value="' + esc(d.ga4_measurement_id || '') + '" placeholder="G-XXXXXXXXXX"></div>' +
+    '<div class="fg"><label>GA4 API Secret</label><input class="fc" id="e-gas" value="' + esc(d.ga4_api_secret || '') + '" placeholder="xxxxxxxxxx"></div></div>' +
+    '<div class="fg"><label>Meta Pixel ID</label><input class="fc" id="e-mpx" value="' + esc(d.meta_pixel_id || '') + '" placeholder="123456789 (opcional)"></div>' +
+    '<div class="fg"><label>Eventos Meta Pixel</label><div class="hn">Selecione quais eventos disparar quando o visitante ver a página</div>' +
+    '<div id="e-mpx-events" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;margin-top:6px">' + buildPixelEventsHtml(selectedEvents) + '</div></div>' +
+    '</div></details>' +
+
+    '<details class="coll" style="margin-top:8px"><summary>Página de conversão</summary><div class="inner">' +
+    '<div class="fg"><label>URL de conversão</label><input class="fc" id="e-cv" value="' + esc(d.conversion_page_url || '') + '" placeholder="https://site.com/obrigado"></div>' +
+    '</div></details>' +
+
+    '<details class="coll" style="margin-top:8px"><summary>Domínio personalizado</summary><div class="inner">' +
+    '<div class="fg"><label>Custom Domain</label><div class="hn">Ex: teste.cliente.com.br</div><input class="fc" id="e-cd" value="' + esc(d.custom_domain || '') + '" placeholder="teste.cliente.com.br"></div>' +
+    '</div></details>' +
+
+    '<details class="coll" style="margin-top:8px"><summary>Snippets personalizados (head / body)</summary><div class="inner">' +
+    '<div class="fg"><label>Snippet no &lt;head&gt;</label><div class="hn">Inserido antes de &lt;/head&gt; em todos os HTMLs do teste</div>' +
+    '<textarea class="fc" id="e-hs" rows="4" placeholder="<!-- ex: Google Tag Manager -->">' + esc(d.head_snippet || '') + '</textarea></div>' +
+    '<div class="fg"><label>Snippet no &lt;body&gt;</label><div class="hn">Inserido antes de &lt;/body&gt; em todos os HTMLs do teste</div>' +
+    '<textarea class="fc" id="e-bs" rows="4" placeholder="<!-- ex: widget de chat -->">' + esc(d.body_snippet || '') + '</textarea></div>' +
+    '</div></details>' +
+
+    '<div style="display:flex;gap:8px;margin-top:20px">' +
+    '<button class="btn bp" onclick="saveEdit(' + id + ')" id="save-btn">💾 Salvar</button>' +
+    '<button class="btn bs" onclick="go(\'report\',' + id + ')">Cancelar</button>' +
+    '</div></div>';
+}
+
+async function saveEdit(id) {
+  const name = document.getElementById('e-name').value.trim();
+  if (!name) { toast('Nome obrigatório', true); return; }
+  const btn = document.getElementById('save-btn');
+  btn.textContent = 'Salvando...'; btn.disabled = true;
+
+  const selectedEvents = Array.from(document.querySelectorAll('#e-mpx-events input[name="pixel_event"]:checked')).map(function(el) { return el.value; });
+
+  const data = {
+    name,
+    test_uri:             document.getElementById('e-uri').value.trim(),
+    active:               +document.getElementById('e-active').value,
+    ga4_measurement_id:   document.getElementById('e-ga4').value.trim() || null,
+    ga4_api_secret:       document.getElementById('e-gas').value.trim() || null,
+    meta_pixel_id:        document.getElementById('e-mpx').value.trim() || null,
+    meta_pixel_events:    selectedEvents.length ? JSON.stringify(selectedEvents) : null,
+    conversion_page_url:  document.getElementById('e-cv').value.trim() || null,
+    custom_domain:        document.getElementById('e-cd').value.trim() || null,
+    head_snippet:         document.getElementById('e-hs').value.trim() || null,
+    body_snippet:         document.getElementById('e-bs').value.trim() || null,
+  };
+
+  const r = await api('/api/tests/' + id, { method: 'PUT', body: data });
+  if (r.error) { toast('Erro: ' + r.error, true); btn.textContent = '💾 Salvar'; btn.disabled = false; return; }
+  toast('Teste salvo!');
+  go('report', id);
 }
 
 // ══════════════════════════════════════════════════
