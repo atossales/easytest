@@ -65,7 +65,7 @@ router.post('/the-members', express.json(), (req, res) => {
   }
 
   const event = getEvent(req.body);
-  logger.info('The Members webhook received', { event, body: JSON.stringify(req.body).slice(0, 500) });
+  logger.info('The Members webhook received', { event, body: JSON.stringify(req.body).slice(0, 2000) });
 
   // Extract cp_uid from UTMs passed through checkout link
   let cid = extractCid(req.body) || req.query.cid || req.query.cp_uid;
