@@ -498,36 +498,60 @@ app.get('/split.js', (req, res) => {
     });
   }
 
-  // Inject cp_uid into all checkout/buy links so external platforms can postback
+  // Inject cp_uid into external links + intercept all navigations (modal forms, window.open, etc.)
   function injectCidInLinks(cid){
     if(!cid)return;
-    document.querySelectorAll('a[href]').forEach(function(a){
+
+    function patchUrl(url){
       try{
-        var u=new URL(a.href);
+        var u=new URL(url,location.href);
+        if(u.hostname===location.hostname)return url;
+        u.searchParams.set('cp_uid',cid);
+        if(!u.searchParams.get('utm_content'))u.searchParams.set('utm_content',cid);
+        return u.toString();
+      }catch(e){return url;}
+    }
+
+    function patchLinks(){
+      document.querySelectorAll('a[href]:not([data-cid])').forEach(function(a){
+        try{
+          var patched=patchUrl(a.href);
+          if(patched!==a.href){a.href=patched;a.setAttribute('data-cid','1');}
+        }catch(e){}
+      });
+    }
+
+    patchLinks();
+
+    // Intercept window.location changes and window.open (modals that redirect)
+    var _open=window.open;
+    window.open=function(url,t,f){return _open.call(window,patchUrl(url||''),t,f);};
+
+    // Intercept form submissions that go to external domains
+    document.addEventListener('submit',function(e){
+      var form=e.target;
+      if(!form||!form.action)return;
+      try{
+        var u=new URL(form.action,location.href);
         if(u.hostname!==location.hostname){
           u.searchParams.set('cp_uid',cid);
-          // Also set as utm_content so platforms that only capture standard UTMs still pass it
-          if(!u.searchParams.get('utm_content'))u.searchParams.set('utm_content',cid);
-          a.href=u.toString();
+          form.action=u.toString();
         }
-      }catch(e){}
-    });
-    // Re-inject on DOM mutations (SPAs / lazy-rendered buttons)
+      }catch(ex){}
+    },true);
+
+    // Intercept all clicks — if they trigger external navigation via JS, patch location
+    var _assign=history.pushState;
+    var origReplace=window.location.replace;
+    // Patch location.href setter via click capture
+    document.addEventListener('click',function(e){
+      // Re-patch links on every click (handles dynamically set hrefs)
+      setTimeout(patchLinks,0);
+    },true);
+
+    // MutationObserver for dynamically rendered links/buttons
     if(typeof MutationObserver!=='undefined'){
-      var obs=new MutationObserver(function(){
-        document.querySelectorAll('a[href]:not([data-cid])').forEach(function(a){
-          try{
-            var u=new URL(a.href);
-            if(u.hostname!==location.hostname){
-              u.searchParams.set('cp_uid',cid);
-              if(!u.searchParams.get('utm_content'))u.searchParams.set('utm_content',cid);
-              a.href=u.toString();
-              a.setAttribute('data-cid','1');
-            }
-          }catch(e){}
-        });
-      });
-      obs.observe(document.body,{childList:true,subtree:true});
+      new MutationObserver(patchLinks).observe(document.body,{childList:true,subtree:true});
     }
   }
 
