@@ -6,20 +6,18 @@ const logger    = require('../lib/logger');
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function extractCid(body) {
-  // 1. Try payload.data.utms array (The Members passes UTMs/custom params here)
+  // 1. Try payload.data.utms array (The Members passes UTMs as [{name, value}])
   const utms = body?.payload?.data?.utms || body?.data?.utms || [];
   if (Array.isArray(utms)) {
-    for (const u of utms) {
-      const val = u?.cp_uid || u?.utm_content || u?.utm_term || u?.value;
-      if (val && val.length > 8) return val;
-    }
-    // Also check if utms is array of {key, value} pairs
     for (const u of utms) {
       if ((u?.key === 'cp_uid' || u?.name === 'cp_uid') && u?.value) return u.value;
     }
   }
 
-  // 2. Try query string (GET postback fallback)
+  // 2. Try top-level cp_uid fields
+  const direct = body?.cp_uid || body?.data?.cp_uid || body?.payload?.cp_uid;
+  if (direct) return direct;
+
   return null;
 }
 
