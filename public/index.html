@@ -794,6 +794,21 @@ async function rEdit(id) {
     '<textarea class="fc" id="e-bs" rows="4" placeholder="<!-- ex: widget de chat -->">' + esc(d.body_snippet || '') + '</textarea></div>' +
     '</div></details>' +
 
+    '<details class="coll" open style="margin-top:8px"><summary>Variações — substituir HTML</summary><div class="inner">' +
+    (d.variations || []).map(function(v) {
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F0F0">' +
+        '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:700;font-size:13px">' + esc(v.name) + '</div>' +
+        '<div style="font-size:11px;color:#888;margin-top:2px">' + esc(v.file_original || 'sem arquivo') + '</div>' +
+        '</div>' +
+        '<label class="btn bs bsm" style="cursor:pointer;margin:0">' +
+        '📁 Novo HTML' +
+        '<input type="file" accept=".html,.htm" style="display:none" onchange="replaceHtml(' + id + ',' + v.id + ',this)">' +
+        '</label>' +
+        '</div>';
+    }).join('') +
+    '</div></details>' +
+
     '<div style="display:flex;gap:8px;margin-top:20px">' +
     '<button class="btn bp" onclick="saveEdit(' + id + ')" id="save-btn">💾 Salvar</button>' +
     '<button class="btn bs" onclick="go(\'report\',' + id + ')">Cancelar</button>' +
@@ -826,6 +841,24 @@ async function saveEdit(id) {
   if (r.error) { toast('Erro: ' + r.error, true); btn.textContent = '💾 Salvar'; btn.disabled = false; return; }
   toast('Teste salvo!');
   go('report', id);
+}
+
+async function replaceHtml(testId, varId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const label = input.parentElement;
+  const orig = label.textContent.trim();
+  label.textContent = 'Enviando...';
+  const fd = new FormData();
+  fd.append('page', file);
+  try {
+    const r = await fetch('/api/tests/' + testId + '/variations/' + varId + '/html', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.error) { toast('Erro: ' + d.error, true); }
+    else { toast('HTML atualizado: ' + (d.variation.name || file.name)); }
+  } catch(e) { toast('Erro ao enviar arquivo', true); }
+  label.textContent = orig;
+  input.value = '';
 }
 
 // ══════════════════════════════════════════════════

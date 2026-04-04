@@ -168,6 +168,26 @@ router.put('/:id', (req, res) => {
   res.json(test);
 });
 
+// POST /api/tests/:id/variations/:vid/html — replace HTML file
+router.post('/:id/variations/:vid/html', upload.single('page'), (req, res) => {
+  const db = getDb();
+  const v  = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(req.params.vid, req.params.id);
+  if (!v) return res.status(404).json({ error: 'Variação não encontrada' });
+  if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+
+  // Delete old file
+  if (v.file_path) {
+    const old = path.resolve(UPLOADS, path.basename(v.file_path));
+    if (old.startsWith(UPLOADS) && fs.existsSync(old)) fs.unlinkSync(old);
+  }
+
+  const autoName = extractTitle(req.file.path) || req.file.originalname.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+  db.prepare('UPDATE variations SET file_path = ?, file_original = ?, name = ? WHERE id = ?')
+    .run(req.file.filename, req.file.originalname, autoName, v.id);
+
+  res.json({ success: true, variation: db.prepare('SELECT * FROM variations WHERE id = ?').get(v.id) });
+});
+
 // PUT /api/tests/:id/variations/:vid
 router.put('/:id/variations/:vid', (req, res) => {
   const db = getDb();
