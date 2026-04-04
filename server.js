@@ -98,18 +98,30 @@ function parseUtm(url = '') {
 
 // Merge UTMs: current URL params take priority over referer params
 function resolveUtm(req) {
-  const fromUrl    = parseUtm('http://x' + req.url);
-  const referer    = req.headers['referer'] || req.headers['referrer'] || '';
+  const fromUrl     = parseUtm('http://x' + req.url);
+  const referer     = req.headers['referer'] || req.headers['referrer'] || '';
   const fromReferer = parseUtm(referer);
-  return {
-    utm_source:   fromUrl.utm_source   || fromReferer.utm_source   || null,
-    utm_medium:   fromUrl.utm_medium   || fromReferer.utm_medium   || null,
-    utm_campaign: fromUrl.utm_campaign || fromReferer.utm_campaign || null,
-    utm_term:     fromUrl.utm_term     || fromReferer.utm_term     || null,
-    utm_content:  fromUrl.utm_content  || fromReferer.utm_content  || null,
-    referrer:     referer || null,
-  };
+  try {
+    const u = new URL('http://x' + req.url);
+    return {
+      utm_source:   fromUrl.utm_source   || fromReferer.utm_source   || null,
+      utm_medium:   fromUrl.utm_medium   || fromReferer.utm_medium   || null,
+      utm_campaign: fromUrl.utm_campaign || fromReferer.utm_campaign || null,
+      utm_term:     fromUrl.utm_term     || fromReferer.utm_term     || null,
+      utm_content:  fromUrl.utm_content  || fromReferer.utm_content  || null,
+      fbclid:       u.searchParams.get('fbclid') || null,
+      gclid:        u.searchParams.get('gclid')  || null,
+      ttclid:       u.searchParams.get('ttclid') || null,
+      referrer:     referer || null,
+    };
+  } catch {
+    return { utm_source: null, utm_medium: null, utm_campaign: null, utm_term: null, utm_content: null, fbclid: null, gclid: null, ttclid: null, referrer: referer || null };
+  }
 }
+
+// Bot detection via UA
+const BOT_RE = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|ia_archiver|semrush|ahrefs|mj12bot|dotbot|rogerbot|seznambot|petalbot|applebot|headlesschrome|python-requests|curl\/|wget\/|axios\/|node-fetch/i;
+function isBot(ua = '') { return BOT_RE.test(ua); }
 
 function getClientIp(req) {
   return (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim();
@@ -204,14 +216,25 @@ app.get('/t/:slug', publicLimiter, (req, res) => {
   const ip     = getClientIp(req);
   const utm    = resolveUtm(req);
   const device = getDeviceType(ua);
+  const bot    = isBot(ua) ? 1 : 0;
 
   db.prepare(`
     UPDATE interactions SET referrer = ?, device_type = ?,
       utm_source = ?, utm_medium = ?, utm_campaign = ?, utm_term = ?, utm_content = ?,
-      ip_hash = ?
+      fbclid = ?, gclid = ?, ttclid = ?, ip_hash = ?, is_bot = ?
     WHERE test_id = ? AND client_id = ?
   `).run(utm.referrer, device, utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_term, utm.utm_content,
-         hashIp(ip), test.id, cid);
+         utm.fbclid, utm.gclid, utm.ttclid, hashIp(ip), bot, test.id, cid);
+
+  // Gap 3: persist UTMs in cookie so they survive the redirect to /p/:tid/:vid
+  if (utm.utm_source || utm.fbclid || utm.gclid || utm.ttclid) {
+    const utmPayload = JSON.stringify({
+      s: utm.utm_source, m: utm.utm_medium, c: utm.utm_campaign,
+      t: utm.utm_term, co: utm.utm_content,
+      fb: utm.fbclid, gc: utm.gclid, tt: utm.ttclid,
+    });
+    res.cookie('cp_utm', utmPayload, { maxAge: 1800000, httpOnly: false, sameSite: 'Lax' }); // 30 min
+  }
 
   // GA4 Measurement Protocol — server-side view event
   const eventId = buildEventId(test.id, chosen.id, cid);
@@ -399,13 +422,20 @@ app.get('*', publicLimiter, (req, res, next) => {
   const ip     = getClientIp(req);
   const utm    = resolveUtm(req);
   const device = getDeviceType(ua);
+  const bot    = isBot(ua) ? 1 : 0;
 
   db.prepare(`
     UPDATE interactions SET referrer = ?, device_type = ?,
-      utm_source = ?, utm_medium = ?, utm_campaign = ?, utm_term = ?, utm_content = ?, ip_hash = ?
+      utm_source = ?, utm_medium = ?, utm_campaign = ?, utm_term = ?, utm_content = ?,
+      fbclid = ?, gclid = ?, ttclid = ?, ip_hash = ?, is_bot = ?
     WHERE test_id = ? AND client_id = ?
   `).run(utm.referrer, device, utm.utm_source, utm.utm_medium, utm.utm_campaign,
-         utm.utm_term, utm.utm_content, hashIp(ip), test.id, cid);
+         utm.utm_term, utm.utm_content, utm.fbclid, utm.gclid, utm.ttclid, hashIp(ip), bot, test.id, cid);
+
+  if (utm.utm_source || utm.fbclid || utm.gclid || utm.ttclid) {
+    const utmPayload = JSON.stringify({ s: utm.utm_source, m: utm.utm_medium, c: utm.utm_campaign, t: utm.utm_term, co: utm.utm_content, fb: utm.fbclid, gc: utm.gclid, tt: utm.ttclid });
+    res.cookie('cp_utm', utmPayload, { maxAge: 1800000, httpOnly: false, sameSite: 'Lax' });
+  }
 
   const eventId = buildEventId(test.id, chosen.id, cid);
   sendGA4Event(test, 'ab_test_view', { client_id: cid, test_name: test.name, variation_name: chosen.name, variation_id: String(chosen.id), event_id: eventId });

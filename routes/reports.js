@@ -15,6 +15,9 @@ function dateFilter(range, alias = 'created_at') {
   return n ? `AND ${alias} >= datetime('now','-${n} days')` : '';
 }
 
+// Always exclude bots from reports
+const NO_BOT = 'AND COALESCE(is_bot, 0) = 0';
+
 // GET /api/reports
 router.get('/', (req, res) => {
   const db   = getDb();
@@ -22,8 +25,8 @@ router.get('/', (req, res) => {
   const tests = db.prepare('SELECT * FROM tests ORDER BY created_at DESC').all();
 
   const overview = tests.map(t => {
-    const views       = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id = ? ${df}`).get(t.id).c || 0;
-    const conversions = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id = ? AND i.type = 'conversion' ${df}`).get(t.id).c || 0;
+    const views       = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id = ? ${df} ${NO_BOT}`).get(t.id).c || 0;
+    const conversions = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id = ? AND i.type = 'conversion' ${df} ${NO_BOT}`).get(t.id).c || 0;
     return { ...t, views, conversions, conversion_rate: +(views > 0 ? (conversions / views * 100).toFixed(2) : 0) };
   });
 
@@ -59,8 +62,8 @@ router.get('/:id', (req, res) => {
 
   // Per-variation stats
   const stats = vars.map(v => {
-    const views       = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id = ? AND variation_id = ? ${df}`).get(id, v.id).c || 0;
-    const conversions = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id = ? AND variation_id = ? AND type = 'conversion' ${df}`).get(id, v.id).c || 0;
+    const views       = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id = ? AND variation_id = ? ${df} ${NO_BOT}`).get(id, v.id).c || 0;
+    const conversions = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id = ? AND variation_id = ? AND type = 'conversion' ${df} ${NO_BOT}`).get(id, v.id).c || 0;
     return { ...v, views, conversions, conversion_rate: +(views > 0 ? (conversions / views * 100).toFixed(2) : 0) };
   });
 
@@ -101,7 +104,7 @@ router.get('/:id', (req, res) => {
   // Device breakdown
   const devices = db.prepare(`
     SELECT COALESCE(device_type, 'unknown') AS device, COUNT(*) AS count
-    FROM interactions WHERE test_id = ? ${df}
+    FROM interactions WHERE test_id = ? ${df} ${NO_BOT}
     GROUP BY device ORDER BY count DESC
   `).all(id);
 
@@ -117,7 +120,7 @@ router.get('/:id', (req, res) => {
       COALESCE(utm_content, '') AS content,
       COUNT(*) AS views,
       COUNT(CASE WHEN type = 'conversion' THEN 1 END) AS conversions
-    FROM interactions WHERE test_id = ? ${df}
+    FROM interactions WHERE test_id = ? ${df} ${NO_BOT}
     GROUP BY utm_source, utm_medium, utm_campaign, utm_term, utm_content
     ORDER BY views DESC LIMIT 20
   `).all(id);
@@ -129,15 +132,18 @@ router.get('/:id', (req, res) => {
       COALESCE(utm_source, 'organic') AS source,
       COUNT(*) AS views,
       COUNT(CASE WHEN type = 'conversion' THEN 1 END) AS conversions
-    FROM interactions WHERE test_id = ? AND utm_campaign IS NOT NULL ${df}
+    FROM interactions WHERE test_id = ? AND utm_campaign IS NOT NULL ${df} ${NO_BOT}
     GROUP BY utm_campaign, utm_source
     ORDER BY views DESC LIMIT 10
   `).all(id);
 
-  // Canal de tráfego simplificado
+  // Canal de tráfego + click IDs
   const trafficChannels = db.prepare(`
     SELECT
       CASE
+        WHEN fbclid IS NOT NULL THEN 'Meta Ads'
+        WHEN gclid  IS NOT NULL THEN 'Google Ads'
+        WHEN ttclid IS NOT NULL THEN 'TikTok Ads'
         WHEN utm_medium IN ('cpc','ppc','paid','paid_social','paid-social') THEN 'Pago'
         WHEN utm_medium IN ('email','newsletter') THEN 'Email'
         WHEN utm_medium IN ('social','social-media') THEN 'Social Orgânico'
@@ -147,9 +153,18 @@ router.get('/:id', (req, res) => {
       END AS channel,
       COUNT(*) AS views,
       COUNT(CASE WHEN type = 'conversion' THEN 1 END) AS conversions
-    FROM interactions WHERE test_id = ? ${df}
+    FROM interactions WHERE test_id = ? ${df} ${NO_BOT}
     GROUP BY channel ORDER BY views DESC
   `).all(id);
+
+  // Click IDs summary (Meta/Google/TikTok)
+  const clickIds = db.prepare(`
+    SELECT
+      COUNT(CASE WHEN fbclid IS NOT NULL THEN 1 END) AS meta_clicks,
+      COUNT(CASE WHEN gclid  IS NOT NULL THEN 1 END) AS google_clicks,
+      COUNT(CASE WHEN ttclid IS NOT NULL THEN 1 END) AS tiktok_clicks
+    FROM interactions WHERE test_id = ? ${df} ${NO_BOT}
+  `).get(id);
 
   const tv = enrichedStats.reduce((s, v) => s + v.views, 0);
   const tc = enrichedStats.reduce((s, v) => s + v.conversions, 0);
@@ -168,7 +183,7 @@ router.get('/:id', (req, res) => {
       labels,
       datasets: Object.values(ds).map(d => ({ ...d, data: labels.map(l => d.data[l] || 0) })),
     },
-    breakdown: { devices, utmSources, utmCampaigns, trafficChannels },
+    breakdown: { devices, utmSources, utmCampaigns, trafficChannels, clickIds },
   });
 });
 

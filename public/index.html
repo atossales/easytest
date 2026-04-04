@@ -425,6 +425,7 @@ async function rRpt(id, range) {
   const utms = (d.breakdown && d.breakdown.utmSources) || [];
   const campaigns = (d.breakdown && d.breakdown.utmCampaigns) || [];
   const channels = (d.breakdown && d.breakdown.trafficChannels) || [];
+  const clickIds = (d.breakdown && d.breakdown.clickIds) || {};
 
   const channelHtml = channels.length
     ? channels.map(function(c) {
@@ -495,6 +496,14 @@ async function rRpt(id, range) {
     sampleBlock +
     '<div class="card" style="margin-bottom:14px"><h3>📈 Visitantes por Dia</h3><div class="cc"><canvas id="ch"></canvas></div></div>' +
     '<details class="coll"><summary>📱 Breakdown por Dispositivo</summary><div class="inner" style="padding-top:10px">' + devHtml + '</div></details>' +
+    ((clickIds.meta_clicks || clickIds.google_clicks || clickIds.tiktok_clicks)
+      ? '<div class="card" style="margin-bottom:14px"><h3>🎯 Click IDs de Anúncios</h3>' +
+        '<div class="sg" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">' +
+        '<div class="sc"><div class="sl">Meta (fbclid)</div><div class="sv blue">' + N(clickIds.meta_clicks || 0) + '</div></div>' +
+        '<div class="sc"><div class="sl">Google (gclid)</div><div class="sv blue">' + N(clickIds.google_clicks || 0) + '</div></div>' +
+        '<div class="sc"><div class="sl">TikTok (ttclid)</div><div class="sv blue">' + N(clickIds.tiktok_clicks || 0) + '</div></div>' +
+        '</div></div>'
+      : '') +
     '<details class="coll"><summary>📡 Canal de Tráfego</summary><div class="inner" style="padding-top:10px">' + channelHtml + '</div></details>' +
     '<details class="coll"><summary>🎯 Campanhas (UTM)</summary><div class="inner">' + campaignHtml + '</div></details>' +
     '<details class="coll"><summary>🔗 Fontes Detalhadas (UTM)</summary><div class="inner">' + utmHtml + '</div></details>';
