@@ -84,6 +84,24 @@ router.post('/conversion', async (req, res) => {
 
     if (!ix) continue;
 
+    // Check funnel steps first (any URL match before conversion URL)
+    if (t.funnel_steps) {
+      try {
+        const steps = JSON.parse(t.funnel_steps);
+        steps.forEach((step, idx) => {
+          if (!urlsMatch(step.url, page_url || '')) return;
+          const already = db.prepare(
+            'SELECT id FROM funnel_events WHERE test_id = ? AND client_id = ? AND step_index = ?'
+          ).get(t.id, cid, idx);
+          if (!already) {
+            db.prepare(
+              'INSERT INTO funnel_events (test_id, variation_id, client_id, step_index) VALUES (?, ?, ?, ?)'
+            ).run(t.id, ix.variation_id, cid, idx);
+          }
+        });
+      } catch (_) {}
+    }
+
     // Record conversion
     db.prepare(
       "UPDATE interactions SET type = 'conversion' WHERE test_id = ? AND client_id = ? AND type = 'view'"

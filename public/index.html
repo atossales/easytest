@@ -120,6 +120,12 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
 .spw{background:var(--g0);border:1px solid var(--g2);border-radius:var(--r);padding:14px 18px;margin-bottom:14px}
 .spw .spt{font-size:12px;font-weight:700}
 .spw .spd{font-size:11px;color:var(--g5);font-weight:500;margin-top:2px}
+/* Funnel */
+.funnel-wrap{overflow-x:auto;padding-bottom:4px}
+.funnel-var{margin-bottom:20px}
+.funnel-var h4{font-size:12px;font-weight:800;margin-bottom:8px;color:var(--g7)}
+.funnel-cmp table td,.funnel-cmp table th{padding:7px 10px;font-size:11.5px}
+.funnel-cmp table th{font-size:10px;letter-spacing:.3px}
 .spb{height:6px;background:var(--g2);border-radius:3px;margin:10px 0 4px;overflow:hidden}
 .spbf{height:100%;background:var(--b);border-radius:3px;transition:width .7s ease}
 .spm{font-size:9px;color:var(--g5);font-weight:600;display:flex;justify-content:space-between}
@@ -206,6 +212,7 @@ function esc(s) {
   return d.innerHTML;
 }
 function N(n) { return (n || 0).toLocaleString('pt-BR'); }
+function N2(n) { return (n || 0).toLocaleString('pt-BR'); }
 async function api(u, o) {
   o = o || {};
   const c = Object.assign({ headers: {'Content-Type': 'application/json'} }, o);
@@ -495,6 +502,7 @@ async function rRpt(id, range) {
     banner +
     '<div class="vc-grid">' + cards + '</div>' +
     sampleBlock +
+    (d.funnel ? buildFunnelSection(d.funnel) : '') +
     '<div class="card" style="margin-bottom:14px"><h3>📈 Visitantes por Dia</h3><div class="cc"><canvas id="ch"></canvas></div></div>' +
     '<details class="coll"><summary>📱 Breakdown por Dispositivo</summary><div class="inner" style="padding-top:10px">' + devHtml + '</div></details>' +
     ((clickIds.meta_clicks || clickIds.google_clicks || clickIds.tiktok_clicks)
@@ -531,6 +539,58 @@ async function rRpt(id, range) {
       },
     });
   }
+}
+
+// ── Funnel chart (SVG trapezoid) ──────────────────
+function buildFunnelSvg(stages) {
+  if (!stages || !stages.length) return '';
+  var W = 560, H = 90, N = stages.length;
+  var sw = W / N;
+  var colors = ['#0065FF','#1255DD','#2448BB','#363B99','#4A2E77','#5E2155','#721433'];
+  var max = stages[0].count || 1;
+  var polys = '', texts = '', axis = '';
+  for (var i = 0; i < N; i++) {
+    var cur = stages[i].count, nxt = i < N - 1 ? stages[i + 1].count : cur;
+    var curH = Math.max(10, H * (cur / max)), nxtH = i < N - 1 ? Math.max(10, H * (nxt / max)) : curH;
+    var curY = (H - curH) / 2, nxtY = (H - nxtH) / 2;
+    var x = i * sw;
+    var col = colors[Math.min(i, colors.length - 1)];
+    var pts = x + ',' + curY + ' ' + (x + sw) + ',' + nxtY + ' ' + (x + sw) + ',' + (nxtY + nxtH) + ' ' + x + ',' + (curY + curH);
+    polys += '<polygon points="' + pts + '" fill="' + col + '"/>';
+    var pct = i === 0 ? '100%' : stages[i].pct.toFixed(1) + '%';
+    texts += '<text x="' + (x + sw / 2) + '" y="' + (H / 2 + 4) + '" text-anchor="middle" fill="white" font-family="Montserrat,sans-serif" font-weight="700" font-size="11">' + pct + '</text>';
+    axis += '<text x="' + (x + sw / 2) + '" y="' + (H + 13) + '" text-anchor="middle" fill="#6B6B6B" font-family="Montserrat,sans-serif" font-size="9" font-weight="600">' + esc(stages[i].name) + '</text>';
+    axis += '<text x="' + (x + sw / 2) + '" y="' + (H + 24) + '" text-anchor="middle" fill="#404040" font-family="Montserrat,sans-serif" font-size="10" font-weight="700">' + N2(stages[i].count) + '</text>';
+  }
+  return '<svg viewBox="0 0 ' + W + ' ' + (H + 30) + '" xmlns="http://www.w3.org/2000/svg" style="width:100%">' + polys + texts + axis + '</svg>';
+}
+
+function buildFunnelSection(funnel) {
+  if (!funnel) return '';
+  var html = '<div class="card" style="margin-bottom:14px"><h3>📊 Funil de Conversão</h3>';
+
+  // Comparison table
+  html += '<div class="funnel-cmp" style="margin-bottom:20px;overflow-x:auto"><table><thead><tr><th>Etapa</th>';
+  funnel.variations.forEach(function(v) { html += '<th>' + esc(v.name) + '</th>'; });
+  html += '</tr></thead><tbody>';
+  funnel.stages.forEach(function(stageName, si) {
+    html += '<tr><td style="font-weight:700">' + esc(stageName) + '</td>';
+    funnel.variations.forEach(function(v) {
+      var s = v.stages[si];
+      var bar = si === 0 ? '' : ' <span style="font-size:10px;color:#6B6B6B">(' + s.pct + '%)</span>';
+      html += '<td>' + N2(s.count) + bar + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // Individual funnels per variation
+  funnel.variations.forEach(function(v) {
+    html += '<div class="funnel-var"><h4>' + esc(v.name) + '</h4><div class="funnel-wrap">' + buildFunnelSvg(v.stages) + '</div></div>';
+  });
+
+  html += '</div>';
+  return html;
 }
 
 // ── Variation card ────────────────────────────────
@@ -794,6 +854,12 @@ async function rEdit(id) {
     '<textarea class="fc" id="e-bs" rows="4" placeholder="<!-- ex: widget de chat -->">' + esc(d.body_snippet || '') + '</textarea></div>' +
     '</div></details>' +
 
+    '<details class="coll" style="margin-top:8px"><summary>Funil de Conversão (etapas intermediárias)</summary><div class="inner">' +
+    '<div class="hn" style="margin-bottom:10px">Defina as etapas entre a visualização e a conversão. Ex: Checkout, Pagamento. A URL deve ser a página onde o visitante chega em cada etapa.</div>' +
+    '<div id="e-funnel-steps">' + buildFunnelStepsHtml(d.funnel_steps ? JSON.parse(d.funnel_steps) : []) + '</div>' +
+    '<button class="btn bs bsm" style="margin-top:8px" onclick="addFunnelStep()">+ Adicionar Etapa</button>' +
+    '</div></details>' +
+
     '<details class="coll" open style="margin-top:8px"><summary>Variações — substituir HTML</summary><div class="inner">' +
     (d.variations || []).map(function(v) {
       var isActive = v.active !== 0;
@@ -845,12 +911,56 @@ async function saveEdit(id) {
     custom_domain:        document.getElementById('e-cd').value.trim() || null,
     head_snippet:         document.getElementById('e-hs').value.trim() || null,
     body_snippet:         document.getElementById('e-bs').value.trim() || null,
+    funnel_steps:         getFunnelSteps(),
   };
 
   const r = await api('/api/tests/' + id, { method: 'PUT', body: data });
   if (r.error) { toast('Erro: ' + r.error, true); btn.textContent = '💾 Salvar'; btn.disabled = false; return; }
   toast('Teste salvo!');
   go('report', id);
+}
+
+function buildFunnelStepsHtml(steps) {
+  if (!steps || !steps.length) return '<div style="color:#888;font-size:11px;padding:4px 0">Nenhuma etapa configurada.</div>';
+  return steps.map(function(s, i) {
+    return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px" id="fstep-' + i + '">' +
+      '<input class="fc" style="flex:1" placeholder="Nome da etapa (ex: Checkout)" value="' + esc(s.name || '') + '" data-fi="name" data-idx="' + i + '">' +
+      '<input class="fc" style="flex:2" placeholder="URL (ex: https://site.com/checkout)" value="' + esc(s.url || '') + '" data-fi="url" data-idx="' + i + '">' +
+      '<button class="btn br bsm" onclick="removeFunnelStep(' + i + ')">✕</button>' +
+      '</div>';
+  }).join('');
+}
+
+function getFunnelSteps() {
+  var steps = [];
+  document.querySelectorAll('#e-funnel-steps [data-fi="name"]').forEach(function(inp) {
+    var idx = inp.dataset.idx;
+    var urlEl = document.querySelector('#e-funnel-steps [data-fi="url"][data-idx="' + idx + '"]');
+    var name = inp.value.trim(), url = urlEl ? urlEl.value.trim() : '';
+    if (name && url) steps.push({ name: name, url: url });
+  });
+  return steps;
+}
+
+function addFunnelStep() {
+  var steps = getFunnelSteps();
+  steps.push({ name: '', url: '' });
+  document.getElementById('e-funnel-steps').innerHTML = buildFunnelStepsHtml(steps);
+  // Re-index data-idx after rebuild
+  document.querySelectorAll('#e-funnel-steps [data-fi="name"]').forEach(function(inp, i) { inp.dataset.idx = i; });
+  document.querySelectorAll('#e-funnel-steps [data-fi="url"]').forEach(function(inp, i) { inp.dataset.idx = i; });
+}
+
+function removeFunnelStep(idx) {
+  var steps = getFunnelSteps();
+  // Remove by current DOM order (idx may shift after reads)
+  var nameEls = Array.from(document.querySelectorAll('#e-funnel-steps [data-fi="name"]'));
+  var urlEls  = Array.from(document.querySelectorAll('#e-funnel-steps [data-fi="url"]'));
+  var fresh = nameEls.map(function(el, i) { return { name: el.value.trim(), url: urlEls[i] ? urlEls[i].value.trim() : '' }; });
+  fresh.splice(idx, 1);
+  document.getElementById('e-funnel-steps').innerHTML = buildFunnelStepsHtml(fresh);
+  document.querySelectorAll('#e-funnel-steps [data-fi="name"]').forEach(function(inp, i) { inp.dataset.idx = i; });
+  document.querySelectorAll('#e-funnel-steps [data-fi="url"]').forEach(function(inp, i) { inp.dataset.idx = i; });
 }
 
 async function setPct(testId, varId) {

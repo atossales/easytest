@@ -147,7 +147,7 @@ router.put('/:id', (req, res) => {
   const current = db.prepare('SELECT * FROM tests WHERE id = ?').get(req.params.id);
   if (!current) return res.status(404).json({ error: 'Não encontrado' });
 
-  const { name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, active, custom_domain, head_snippet, body_snippet, meta_pixel_events } = req.body;
+  const { name, test_uri, conversion_page_url, ga4_measurement_id, ga4_api_secret, meta_pixel_id, active, custom_domain, head_snippet, body_snippet, meta_pixel_events, funnel_steps } = req.body;
 
   let slug   = test_uri ? sanitize(test_uri) : current.test_uri;
   if (slug !== current.test_uri) slug = uniqueSlug(db, slug);
@@ -156,12 +156,18 @@ router.put('/:id', (req, res) => {
     ? (meta_pixel_events ? (typeof meta_pixel_events === 'string' ? meta_pixel_events : JSON.stringify(meta_pixel_events)) : null)
     : current.meta_pixel_events;
 
+  const funnelJson = funnel_steps !== undefined
+    ? (Array.isArray(funnel_steps) ? JSON.stringify(funnel_steps) : funnel_steps || null)
+    : current.funnel_steps;
+
   db.prepare(`
     UPDATE tests SET name = ?, test_uri = ?, conversion_page_url = ?, ga4_measurement_id = ?,
     ga4_api_secret = ?, meta_pixel_id = ?, active = ?, custom_domain = ?,
-    head_snippet = ?, body_snippet = ?, meta_pixel_events = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    head_snippet = ?, body_snippet = ?, meta_pixel_events = ?, funnel_steps = ?,
+    updated_at = CURRENT_TIMESTAMP WHERE id = ?
   `).run(name, slug, conversion_page_url, ga4_measurement_id || null, ga4_api_secret || null,
-         meta_pixel_id || null, active ?? 1, domain, head_snippet || null, body_snippet || null, pixelEventsJson, req.params.id);
+         meta_pixel_id || null, active ?? 1, domain, head_snippet || null, body_snippet || null,
+         pixelEventsJson, funnelJson, req.params.id);
 
   const test = db.prepare('SELECT * FROM tests WHERE id = ?').get(req.params.id);
   test.variations = db.prepare('SELECT * FROM variations WHERE test_id = ?').all(req.params.id);
