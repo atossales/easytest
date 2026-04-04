@@ -61,8 +61,9 @@ router.post('/view', (req, res) => {
 // ── POST /api/track/conversion ────────────────────────────────────────────
 router.post('/conversion', async (req, res) => {
   const db  = getDb();
-  const { page_url, utm_source, utm_medium, utm_campaign } = req.body;
-  const cid = req.cookies?.cp_uid;
+  const { page_url, cid: cidBody } = req.body;
+  // Accept cid from cookie OR from body (cross-origin fallback)
+  const cid = req.cookies?.cp_uid || cidBody;
 
   if (!cid) return res.json({ converted: 0 });
 

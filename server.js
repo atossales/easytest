@@ -528,11 +528,27 @@ app.get('/split.js', (req, res) => {
 });
 
 // ── /embed.js ─────────────────────────────────────────────────────────────
+app.options('/embed.js', (req, res) => {
+  const origin = req.headers.origin || '*';
+  res.set('Access-Control-Allow-Origin', origin)
+     .set('Access-Control-Allow-Credentials', 'true')
+     .set('Access-Control-Allow-Methods', 'GET')
+     .set('Access-Control-Allow-Headers', '*')
+     .sendStatus(204);
+});
 app.get('/embed.js', (req, res) => {
+  const origin = req.headers.origin || '*';
+  res.set('Access-Control-Allow-Origin', origin);
+  res.set('Access-Control-Allow-Credentials', 'true');
+  res.set('Cache-Control', 'no-store');
   const h = SITE_URL || getSetting('site_url') || (req.protocol + '://' + req.get('host'));
   res.type('application/javascript').send(`
 (function(){
   var H="${h}";
+  // Read cp_uid from cookie (set by split.js on first visit)
+  function ck(n){var a=n+'=',d=document.cookie,c=d.split(';');for(var i=0;i<c.length;i++){var s=c[i].trim();if(s.indexOf(a)===0)return s.substring(a.length);}return '';}
+  var cid=ck('cp_uid');
+
   function post(u,d,cb){
     var x=new XMLHttpRequest();
     x.open("POST",H+u,true);
@@ -541,10 +557,12 @@ app.get('/embed.js', (req, res) => {
     x.onload=function(){if(x.status<300)try{cb(JSON.parse(x.responseText))}catch(e){cb(null)}};
     x.send(JSON.stringify(d));
   }
-  post("/api/track/conversion",{page_url:location.href},function(r){
+
+  // Send cid in body as fallback when cross-origin cookie is blocked
+  post("/api/track/conversion",{page_url:location.href,cid:cid||undefined},function(r){
     if(r&&r.converted>0){
       if(typeof gtag==="function")gtag("event","ab_test_conversion",{conversions:r.converted});
-      if(typeof fbq==="function"){fbq("track","Lead");fbq("trackCustom","ABTestConversion",{conversions:r.converted});}
+      if(typeof fbq==="function"){fbq("track","Purchase");fbq("trackCustom","ABTestConversion",{conversions:r.converted});}
     }
   });
 })();`);
