@@ -445,6 +445,7 @@ app.get('/split.js', (req, res) => {
   const slug = req.query.test || '';
 
   res.set('Access-Control-Allow-Origin', '*');
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.type('application/javascript').send(`
 (function(){
   var SL=${JSON.stringify(slug)};
