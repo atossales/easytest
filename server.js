@@ -63,6 +63,7 @@ app.use('/api/track',    trackLimiter, require('./routes/tracking'));
 app.use('/api/reports',  apiLimiter,   require('./routes/reports'));
 app.use('/api/ga4',      apiLimiter,   require('./routes/ga4'));
 app.use('/api/settings', apiLimiter,   require('./routes/settings'));
+app.use('/api/webhook',  trackLimiter, require('./routes/webhook'));
 
 // ── Health check (unauthenticated) ───────────────────────────────────────
 app.get('/health', (req, res) => {
@@ -493,6 +494,21 @@ app.get('/split.js', (req, res) => {
     });
   }
 
+  // Inject cp_uid into all checkout/buy links so external platforms can postback
+  function injectCidInLinks(cid){
+    if(!cid)return;
+    document.querySelectorAll('a[href]').forEach(function(a){
+      try{
+        var u=new URL(a.href);
+        // Only inject into external checkout domains (not same origin)
+        if(u.hostname!==location.hostname){
+          u.searchParams.set('cp_uid',cid);
+          a.href=u.toString();
+        }
+      }catch(e){}
+    });
+  }
+
   function applyHtml(html){
     var parser=new DOMParser();
     var doc=parser.parseFromString(html,'text/html');
@@ -519,6 +535,7 @@ app.get('/split.js', (req, res) => {
       sc('cp_t_'+SL,String(d.variation_id),30);
       if(d.cid)sc('cp_uid',d.cid,30);
       applyHtml(d.html);
+      injectCidInLinks(d.cid||cid);
     })
     .catch(function(e){
       document.documentElement.style.visibility='';

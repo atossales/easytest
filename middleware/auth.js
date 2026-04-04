@@ -28,7 +28,7 @@ function isValidSession(token) {
 }
 
 // Routes that don't need auth (public visitor-facing)
-const PUBLIC_PREFIXES = ['/t/', '/p/', '/embed.js', '/split.js', '/api/track', '/api/split', '/auth/', '/health'];
+const PUBLIC_PREFIXES = ['/t/', '/p/', '/embed.js', '/split.js', '/api/track', '/api/split', '/api/webhook', '/auth/', '/health'];
 
 function requireAuth(req, res, next) {
   const isPublic = PUBLIC_PREFIXES.some(p => req.path.startsWith(p));
