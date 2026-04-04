@@ -440,6 +440,9 @@ async function rRpt(id, range) {
     '<div class="ph">' +
     '<div><h1>' + testName + '</h1><div class="sub">Criado em ' + testDate + '</div></div>' +
     '<div class="ph-row">' +
+    '<button class="btn bs" onclick="rRpt(' + id + ',\'' + r + '\')">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' +
+    'Atualizar</button>' +
     '<select class="rs" onchange="rRpt(' + id + ',this.value)">' +
     '<option value="7"' + (r==='7'?' selected':'') + '>7 dias</option>' +
     '<option value="30"' + (r==='30'?' selected':'') + '>30 dias</option>' +
