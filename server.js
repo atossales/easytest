@@ -411,14 +411,19 @@ app.get('/api/split/:slug', publicLimiter, (req, res) => {
   const bot    = isBot(ua) ? 1 : 0;
 
   // UTMs are passed as query params by the split.js (captured from the client page URL)
+  // Infer utm_source/medium from click IDs when not explicitly set
   const qp = req.query;
+  const utmSource   = qp.utm_source   || (qp.fbclid ? 'facebook' : qp.gclid ? 'google' : qp.ttclid ? 'tiktok' : null);
+  const utmMedium   = qp.utm_medium   || (qp.fbclid ? 'paid_social' : qp.gclid ? 'cpc' : qp.ttclid ? 'paid_social' : null);
+  const utmCampaign = qp.utm_campaign || null;
+
   db.prepare(`
     UPDATE interactions SET referrer = ?, device_type = ?,
       utm_source = ?, utm_medium = ?, utm_campaign = ?, utm_term = ?, utm_content = ?,
       fbclid = ?, gclid = ?, ttclid = ?, ip_hash = ?, is_bot = ?
     WHERE test_id = ? AND client_id = ?
   `).run(qp.ref || null, device,
-         qp.utm_source || null, qp.utm_medium || null, qp.utm_campaign || null,
+         utmSource, utmMedium, utmCampaign,
          qp.utm_term || null, qp.utm_content || null,
          qp.fbclid || null, qp.gclid || null, qp.ttclid || null,
          hashIp(ip), bot, test.id, cid);
@@ -432,7 +437,11 @@ app.get('/api/split/:slug', publicLimiter, (req, res) => {
   if (test.head_snippet && html.includes('</head>')) html = html.replace('</head>', test.head_snippet + '\n</head>');
   if (test.body_snippet && html.includes('</body>')) html = html.replace('</body>', test.body_snippet + '\n</body>');
 
-  logger.debug('Split API', { slug: req.params.slug, variation: chosen.name, cid: cid.slice(0, 8) });
+  logger.info('Split API', {
+    slug: req.params.slug, variation: chosen.name, cid: cid.slice(0, 8),
+    utm_source: qp.utm_source || null, utm_medium: qp.utm_medium || null,
+    fbclid: qp.fbclid ? '✓' : null, gclid: qp.gclid ? '✓' : null,
+  });
   res.json({ html, variation_id: chosen.id, variation_name: chosen.name, cid });
 });
 

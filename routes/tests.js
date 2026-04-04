@@ -204,7 +204,17 @@ router.put('/:id/variations/:vid', (req, res) => {
       .run(pct, Math.max(1, Math.floor(pct / 10)), req.params.vid, req.params.id);
   }
   if (name !== undefined) db.prepare('UPDATE variations SET name = ? WHERE id = ? AND test_id = ?').run(name, req.params.vid, req.params.id);
-  if (active !== undefined) db.prepare('UPDATE variations SET active = ? WHERE id = ? AND test_id = ?').run(active ? 1 : 0, req.params.vid, req.params.id);
+  if (active !== undefined) {
+    db.prepare('UPDATE variations SET active = ? WHERE id = ? AND test_id = ?').run(active ? 1 : 0, req.params.vid, req.params.id);
+    // Redistribute percentage equally across remaining active variations
+    const active_vars = db.prepare('SELECT id FROM variations WHERE test_id = ? AND COALESCE(active,1)=1').all(req.params.id);
+    if (active_vars.length > 0) {
+      const pct = Math.floor(100 / active_vars.length);
+      const rem = 100 - pct * active_vars.length;
+      const upd = db.prepare('UPDATE variations SET percentage = ?, remaining = ? WHERE id = ?');
+      active_vars.forEach((v, i) => upd.run(i === 0 ? pct + rem : pct, Math.max(1, Math.floor((i === 0 ? pct + rem : pct) / 10)), v.id));
+    }
+  }
   res.json({ success: true });
 });
 
