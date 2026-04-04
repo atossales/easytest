@@ -76,21 +76,19 @@ router.post('/conversion', async (req, res) => {
 
   const tests = db.prepare('SELECT * FROM tests WHERE active = 1').all();
   for (const t of tests) {
-    if (!t.conversion_page_url) continue;
-    if (!urlsMatch(t.conversion_page_url, page_url || '')) continue;
+    if (!t.funnel_steps && !t.conversion_page_url) continue;
 
     const ix = db.prepare(
       "SELECT * FROM interactions WHERE test_id = ? AND client_id = ? AND type = 'view'"
     ).get(t.id, cid);
-
     if (!ix) continue;
 
-    // Check funnel steps first (any URL match before conversion URL)
+    // ── Funnel steps: checked on ANY page, independent of conversion URL ──
     if (t.funnel_steps) {
       try {
         const steps = JSON.parse(t.funnel_steps);
         steps.forEach((step, idx) => {
-          if (!urlsMatch(step.url, page_url || '')) return;
+          if (!step.url || !urlsMatch(step.url, page_url || '')) return;
           const already = db.prepare(
             'SELECT id FROM funnel_events WHERE test_id = ? AND client_id = ? AND step_index = ?'
           ).get(t.id, cid, idx);
@@ -98,10 +96,15 @@ router.post('/conversion', async (req, res) => {
             db.prepare(
               'INSERT INTO funnel_events (test_id, variation_id, client_id, step_index) VALUES (?, ?, ?, ?)'
             ).run(t.id, ix.variation_id, cid, idx);
+            logger.info('Funnel step recorded', { test: t.name, step: step.url, idx, cid: cid.slice(0, 8) });
           }
         });
       } catch (_) {}
     }
+
+    // ── Conversion: only when page matches the configured conversion URL ──
+    if (!t.conversion_page_url) continue;
+    if (!urlsMatch(t.conversion_page_url, page_url || '')) continue;
 
     // Record conversion
     db.prepare(

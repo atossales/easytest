@@ -36,6 +36,20 @@ function isConversionEvent(event) {
          e.includes('compra');
 }
 
+// Returns 0 for Cadastros, 1 for Initiate Checkout, null if not a funnel event
+function getFunnelStepIndex(event) {
+  if (!event) return null;
+  const e = event.toLowerCase();
+  // Cadastro / lead / registro
+  if (e.includes('lead') || e.includes('cadastr') || e.includes('registr') ||
+      e.includes('subscrib') || e.includes('signup') || e.includes('sign_up') ||
+      e.includes('optin') || e.includes('opt_in')) return 0;
+  // Initiate checkout
+  if (e.includes('checkout') || e.includes('cart') || e.includes('carrinho') ||
+      e.includes('initiat') || e.includes('order')) return 1;
+  return null;
+}
+
 // ── POST /api/webhook/the-members ─────────────────────────────────────────
 router.post('/the-members', express.json(), (req, res) => {
   const db = getDb();
@@ -53,20 +67,24 @@ router.post('/the-members', express.json(), (req, res) => {
   const event = getEvent(req.body);
   logger.info('The Members webhook received', { event, body: JSON.stringify(req.body).slice(0, 500) });
 
-  // Only process confirmed conversion events
-  if (!isConversionEvent(event)) {
-    return res.json({ ok: true, skipped: true, event });
-  }
-
   // Extract cp_uid from UTMs passed through checkout link
   let cid = extractCid(req.body) || req.query.cid || req.query.cp_uid;
 
   if (!cid) {
     logger.warn('The Members webhook: no cp_uid found in payload', { event, body: JSON.stringify(req.body).slice(0, 300) });
-    return res.json({ ok: true, converted: 0, reason: 'cp_uid not found — make sure checkout link has ?cp_uid= parameter' });
+    return res.json({ ok: true, converted: 0, funnel: 0, reason: 'cp_uid not found — make sure checkout link has ?cp_uid= parameter' });
+  }
+
+  const isConversion = isConversionEvent(event);
+  const funnelStepIdx = isConversion ? null : getFunnelStepIndex(event);
+
+  // Skip events that are neither conversion nor funnel steps
+  if (!isConversion && funnelStepIdx === null) {
+    return res.json({ ok: true, skipped: true, event });
   }
 
   let converted = 0;
+  let funnelRecorded = 0;
   const tests = db.prepare('SELECT * FROM tests WHERE active = 1').all();
 
   for (const t of tests) {
@@ -75,17 +93,31 @@ router.post('/the-members', express.json(), (req, res) => {
     ).get(t.id, cid);
     if (!ix) continue;
 
-    db.prepare(
-      "UPDATE interactions SET type = 'conversion' WHERE test_id = ? AND client_id = ? AND type = 'view'"
-    ).run(t.id, cid);
-
-    converted++;
-    logger.info('The Members webhook: conversion registered', {
-      cid: cid.slice(0, 8), test: t.name, event,
-    });
+    if (isConversion) {
+      db.prepare(
+        "UPDATE interactions SET type = 'conversion' WHERE test_id = ? AND client_id = ? AND type = 'view'"
+      ).run(t.id, cid);
+      converted++;
+      logger.info('The Members webhook: conversion registered', {
+        cid: cid.slice(0, 8), test: t.name, event,
+      });
+    } else if (funnelStepIdx !== null) {
+      const already = db.prepare(
+        'SELECT id FROM funnel_events WHERE test_id = ? AND client_id = ? AND step_index = ?'
+      ).get(t.id, cid, funnelStepIdx);
+      if (!already) {
+        db.prepare(
+          'INSERT INTO funnel_events (test_id, variation_id, client_id, step_index) VALUES (?, ?, ?, ?)'
+        ).run(t.id, ix.variation_id, cid, funnelStepIdx);
+        funnelRecorded++;
+        logger.info('The Members webhook: funnel step recorded', {
+          cid: cid.slice(0, 8), test: t.name, event, step: funnelStepIdx,
+        });
+      }
+    }
   }
 
-  res.json({ ok: true, converted, event });
+  res.json({ ok: true, converted, funnel: funnelRecorded, event });
 });
 
 // ── Generic GET/POST /api/webhook/conversion ──────────────────────────────
