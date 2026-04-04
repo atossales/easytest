@@ -580,6 +580,8 @@ app.get('/split.js', (req, res) => {
       if(!d.html){document.documentElement.style.visibility='';return;}
       sc('cp_t_'+SL,String(d.variation_id),30);
       if(d.cid)sc('cp_uid',d.cid,30);
+      // Expose cid globally so inline form JS can read it
+      window.__cp_uid = d.cid||cid;
       applyHtml(d.html);
       injectCidInLinks(d.cid||cid);
     })
