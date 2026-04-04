@@ -27,14 +27,14 @@ function getEvent(body) {
   return body?.payload?.event || body?.event || '';
 }
 
-// Events that mean "conversion confirmed"
-const CONVERSION_EVENTS = new Set([
-  'transaction.approved',
-  'release.access',
-  'conceder.acesso',
-  'access.granted',
-  'order.completed',
-]);
+function isConversionEvent(event) {
+  if (!event) return false;
+  const e = event.toLowerCase();
+  return e.includes('approv') || e.includes('aprovad') ||
+         e.includes('acesso') || e.includes('access') ||
+         e.includes('completed') || e.includes('concluíd') ||
+         e.includes('compra');
+}
 
 // ── POST /api/webhook/the-members ─────────────────────────────────────────
 router.post('/the-members', express.json(), (req, res) => {
@@ -51,10 +51,10 @@ router.post('/the-members', express.json(), (req, res) => {
   }
 
   const event = getEvent(req.body);
-  logger.info('The Members webhook received', { event });
+  logger.info('The Members webhook received', { event, body: JSON.stringify(req.body).slice(0, 500) });
 
   // Only process confirmed conversion events
-  if (!CONVERSION_EVENTS.has(event)) {
+  if (!isConversionEvent(event)) {
     return res.json({ ok: true, skipped: true, event });
   }
 
