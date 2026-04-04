@@ -191,12 +191,14 @@ router.post('/:id/variations/:vid/html', upload.single('page'), (req, res) => {
 // PUT /api/tests/:id/variations/:vid
 router.put('/:id/variations/:vid', (req, res) => {
   const db = getDb();
-  const { percentage, name } = req.body;
+  const { percentage, name, active } = req.body;
   if (percentage !== undefined) {
+    const pct = Math.max(1, Math.min(100, parseInt(percentage) || 50));
     db.prepare('UPDATE variations SET percentage = ?, remaining = ? WHERE id = ? AND test_id = ?')
-      .run(percentage, Math.max(1, Math.floor(percentage / 10)), req.params.vid, req.params.id);
+      .run(pct, Math.max(1, Math.floor(pct / 10)), req.params.vid, req.params.id);
   }
-  if (name) db.prepare('UPDATE variations SET name = ? WHERE id = ? AND test_id = ?').run(name, req.params.vid, req.params.id);
+  if (name !== undefined) db.prepare('UPDATE variations SET name = ? WHERE id = ? AND test_id = ?').run(name, req.params.vid, req.params.id);
+  if (active !== undefined) db.prepare('UPDATE variations SET active = ? WHERE id = ? AND test_id = ?').run(active ? 1 : 0, req.params.vid, req.params.id);
   res.json({ success: true });
 });
 

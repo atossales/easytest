@@ -134,15 +134,15 @@ function hashIp(ip) {
 // ── Weighted variation assignment ─────────────────────────────────────────
 // Uses the `percentage` field as weight, falling back to the `remaining` counter.
 function assignVariation(db, test, clientId) {
-  const vars = db.prepare('SELECT * FROM variations WHERE test_id = ? ORDER BY id').all(test.id);
+  const vars = db.prepare('SELECT * FROM variations WHERE test_id = ? AND COALESCE(active,1)=1 ORDER BY id').all(test.id);
   if (!vars.length) return null;
 
   // Refill remaining counters when all are exhausted
   if (!vars.some(v => v.remaining > 0)) {
-    db.prepare('UPDATE variations SET remaining = MAX(1, percentage / 10) WHERE test_id = ?').run(test.id);
+    db.prepare('UPDATE variations SET remaining = MAX(1, percentage / 10) WHERE test_id = ? AND COALESCE(active,1)=1').run(test.id);
   }
 
-  const avail = db.prepare('SELECT * FROM variations WHERE test_id = ? AND remaining > 0 ORDER BY id').all(test.id);
+  const avail = db.prepare('SELECT * FROM variations WHERE test_id = ? AND COALESCE(active,1)=1 AND remaining > 0 ORDER BY id').all(test.id);
   if (!avail.length) return null;
 
   // Weighted random selection by percentage

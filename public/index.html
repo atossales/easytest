@@ -796,17 +796,26 @@ async function rEdit(id) {
 
     '<details class="coll" open style="margin-top:8px"><summary>Variações — substituir HTML</summary><div class="inner">' +
     (d.variations || []).map(function(v) {
-      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #F0F0F0">' +
-        '<div style="flex:1;min-width:0">' +
-        '<input class="fc" style="font-weight:700;font-size:13px;margin-bottom:4px" id="vname-' + v.id + '" value="' + esc(v.name) + '">' +
-        '<div style="font-size:11px;color:#888">' + esc(v.file_original || 'sem arquivo') + '</div>' +
-        '</div>' +
+      var isActive = v.active !== 0;
+      return '<div style="padding:10px 0;border-bottom:1px solid #F0F0F0">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+        '<input class="fc" style="flex:1;font-weight:700;font-size:13px" id="vname-' + v.id + '" value="' + esc(v.name) + '">' +
         '<button class="btn bs bsm" style="white-space:nowrap" onclick="renameVar(' + id + ',' + v.id + ')">✔ Salvar</button>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+        '<div style="font-size:11px;color:#888;flex:1;min-width:0">' + esc(v.file_original || 'sem arquivo') + '</div>' +
+        '<div style="display:flex;align-items:center;gap:4px">' +
+        '<input type="number" min="1" max="100" class="fc" id="vpct-' + v.id + '" value="' + v.percentage + '" style="width:64px;text-align:center" title="% de tráfego">' +
+        '<span style="font-size:11px;color:#888">%</span>' +
+        '<button class="btn bs bsm" onclick="setPct(' + id + ',' + v.id + ')">✔</button>' +
+        '</div>' +
+        '<button class="btn bsm" id="vtoggle-' + v.id + '" style="white-space:nowrap;background:' + (isActive ? '#E8F5E9;color:#2E7D32' : '#FFF3E0;color:#E65100') + '" onclick="toggleVar(' + id + ',' + v.id + ',' + (isActive ? 0 : 1) + ')">' +
+        (isActive ? '● Ativo' : '○ Pausado') + '</button>' +
         '<label class="btn bs bsm" style="cursor:pointer;margin:0;white-space:nowrap">' +
         '📁 Novo HTML' +
         '<input type="file" accept=".html,.htm" style="display:none" onchange="replaceHtml(' + id + ',' + v.id + ',this)">' +
         '</label>' +
-        '</div>';
+        '</div></div>';
     }).join('') +
     '</div></details>' +
 
@@ -842,6 +851,28 @@ async function saveEdit(id) {
   if (r.error) { toast('Erro: ' + r.error, true); btn.textContent = '💾 Salvar'; btn.disabled = false; return; }
   toast('Teste salvo!');
   go('report', id);
+}
+
+async function setPct(testId, varId) {
+  const input = document.getElementById('vpct-' + varId);
+  const pct = Math.max(1, Math.min(100, parseInt(input?.value) || 50));
+  input.value = pct;
+  const r = await api('/api/tests/' + testId + '/variations/' + varId, { method: 'PUT', body: { percentage: pct } });
+  if (r.error) toast('Erro: ' + r.error, true);
+  else toast('Tráfego atualizado para ' + pct + '%');
+}
+
+async function toggleVar(testId, varId, newActive) {
+  const r = await api('/api/tests/' + testId + '/variations/' + varId, { method: 'PUT', body: { active: newActive } });
+  if (r.error) { toast('Erro: ' + r.error, true); return; }
+  const btn = document.getElementById('vtoggle-' + varId);
+  if (btn) {
+    btn.textContent = newActive ? '● Ativo' : '○ Pausado';
+    btn.style.background = newActive ? '#E8F5E9' : '#FFF3E0';
+    btn.style.color = newActive ? '#2E7D32' : '#E65100';
+    btn.onclick = function() { toggleVar(testId, varId, newActive ? 0 : 1); };
+  }
+  toast(newActive ? 'Variação ativada' : 'Variação pausada');
 }
 
 async function renameVar(testId, varId) {
