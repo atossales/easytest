@@ -387,10 +387,14 @@ app.get('/api/split/:slug', publicLimiter, (req, res) => {
   let cid = req.query.cid || req.cookies?.cp_uid;
   if (!cid) cid = uuidv4();
 
-  // Sticky: if already assigned, reuse
+  // Sticky: prefer cookie vid, fallback to DB lookup by cid
   const stickyVid = req.query.vid ? +req.query.vid : null;
-  if (stickyVid) {
-    const sticky = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(stickyVid, test.id);
+  const stickyFromDb = !stickyVid
+    ? db.prepare('SELECT variation_id FROM interactions WHERE test_id = ? AND client_id = ? LIMIT 1').get(test.id, cid)
+    : null;
+  const resolvedVid = stickyVid || stickyFromDb?.variation_id || null;
+  if (resolvedVid) {
+    const sticky = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(resolvedVid, test.id);
     if (sticky?.file_path) {
       const fp2 = path.resolve(UPLOADS, path.basename(sticky.file_path));
       if (fp2.startsWith(UPLOADS) && fs.existsSync(fp2)) {
