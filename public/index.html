@@ -224,9 +224,13 @@ async function rDash() {
   const t = d.totals || {};
   document.getElementById('m').innerHTML =
     '<div class="ph"><div><h1>Dashboard</h1><div class="sub">Últimos 30 dias</div></div>' +
+    '<div class="ph-row">' +
+    '<button class="btn bs" onclick="rDash()" title="Atualizar">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' +
+    'Atualizar</button>' +
     '<button class="btn bp" onclick="go(\'new\')">' +
     '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
-    'Novo Teste</button></div>' +
+    'Novo Teste</button></div></div>' +
     '<div class="sg">' +
     '<div class="sc"><div class="sl">Testes Ativos</div><div class="sv blue">' + (t.active_tests || 0) + '</div></div>' +
     '<div class="sc"><div class="sl">Visitantes</div><div class="sv">' + N(t.total_views) + '</div></div>' +
