@@ -169,24 +169,20 @@ router.get('/:id', (req, res) => {
   const tv = enrichedStats.reduce((s, v) => s + v.views, 0);
   const tc = enrichedStats.reduce((s, v) => s + v.conversions, 0);
 
-  // Funnel — always built (intermediate steps optional)
-  const midSteps = (() => {
-    try { return test.funnel_steps ? JSON.parse(test.funnel_steps) : []; } catch { return []; }
-  })();
-  const stageNames = ['Visitas', ...midSteps.map(s => s.name), 'Conversões'];
+  // Funnel — always 4 fixed stages: Visitas, Cadastros, Init. Checkout, Conversões
+  // funnel_steps index 0 = Cadastros URL, index 1 = Initiate Checkout URL
+  const FUNNEL_STAGES = ['Visitas', 'Cadastros', 'Initiate Checkout', 'Conversões'];
 
   const varFunnels = enrichedStats.map(v => {
-    const stepCounts = midSteps.map((_, idx) =>
-      db.prepare('SELECT COUNT(DISTINCT client_id) AS c FROM funnel_events WHERE test_id = ? AND variation_id = ? AND step_index = ?')
-        .get(id, v.id, idx).c || 0
-    );
-    const counts = [v.views, ...stepCounts, v.conversions];
+    const cadastros  = db.prepare('SELECT COUNT(DISTINCT client_id) AS c FROM funnel_events WHERE test_id = ? AND variation_id = ? AND step_index = 0').get(id, v.id).c || 0;
+    const initChk    = db.prepare('SELECT COUNT(DISTINCT client_id) AS c FROM funnel_events WHERE test_id = ? AND variation_id = ? AND step_index = 1').get(id, v.id).c || 0;
+    const counts = [v.views, cadastros, initChk, v.conversions];
     const max = counts[0] || 1;
     return {
       id: v.id,
       name: v.name,
       stages: counts.map((count, i) => ({
-        name: stageNames[i],
+        name: FUNNEL_STAGES[i],
         count,
         pct: +(max > 0 ? (count / max * 100).toFixed(1) : 0),
       })),
@@ -195,22 +191,20 @@ router.get('/:id', (req, res) => {
   });
 
   // Overall funnel (sum across all variations)
-  const overallCounts = stageNames.map((_, si) =>
+  const overallCounts = [0, 1, 2, 3].map(si =>
     varFunnels.reduce((sum, v) => sum + (v.stages[si]?.count || 0), 0)
   );
   const overallMax = overallCounts[0] || 1;
   const overallFunnel = {
-    id: 0,
-    name: 'Geral',
     stages: overallCounts.map((count, i) => ({
-      name: stageNames[i],
+      name: FUNNEL_STAGES[i],
       count,
       pct: +(overallMax > 0 ? (count / overallMax * 100).toFixed(1) : 0),
     })),
-    abandono: overallCounts[0] - overallCounts[overallCounts.length - 1],
+    abandono: overallCounts[0] - overallCounts[3],
   };
 
-  const funnel = { stages: stageNames, overall: overallFunnel, variations: varFunnels };
+  const funnel = { stages: FUNNEL_STAGES, overall: overallFunnel, variations: varFunnels };
 
   res.json({
     test,
