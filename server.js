@@ -373,6 +373,7 @@ ${pixelExtraEvents}
 // Called by split.js running on the client's own domain.
 // Returns the HTML of the assigned variation so the client can replace content
 // without any redirect — URL stays as tanajuras.com.
+app.options('/api/split/:slug', (req, res) => { res.set('Access-Control-Allow-Origin','*').set('Access-Control-Allow-Methods','GET').set('Access-Control-Allow-Headers','*').sendStatus(204); });
 app.get('/api/split/:slug', publicLimiter, (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET');
@@ -442,58 +443,69 @@ app.get('/split.js', (req, res) => {
   const host = SITE_URL || getSetting('site_url') || (req.protocol + '://' + req.get('host'));
   const slug = req.query.test || '';
 
+  res.set('Access-Control-Allow-Origin', '*');
   res.type('application/javascript').send(`
 (function(){
-  if(!${JSON.stringify(slug)}) return;
-  var H=${JSON.stringify(host)},SL=${JSON.stringify(slug)};
+  var SL=${JSON.stringify(slug)};
+  if(!SL) return;
+  var H=${JSON.stringify(host)};
 
-  // Read cookie helper
-  function ck(n){var a=n+'=',d=decodeURIComponent(document.cookie),c=d.split(';');for(var i=0;i<c.length;i++){var s=c[i].trim();if(s.indexOf(a)===0)return s.substring(a.length);}return '';}
-  // Write cookie helper
+  function ck(n){var a=n+'=',d=document.cookie,c=d.split(';');for(var i=0;i<c.length;i++){var s=c[i].trim();if(s.indexOf(a)===0)return s.substring(a.length);}return '';}
   function sc(n,v,days){document.cookie=n+'='+v+';max-age='+(days*86400)+';path=/;SameSite=Lax';}
 
-  // Get or create visitor ID
-  var cid=ck('cp_uid')||(function(){var id=(crypto&&crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).substr(2,16));sc('cp_uid',id,30);return id;})();
+  var cid=ck('cp_uid');
+  if(!cid){cid=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():Math.random().toString(36).substr(2,16);sc('cp_uid',cid,30);}
 
-  // Get sticky variation if already assigned
-  var vidKey='cp_t_'+SL, vid=ck(vidKey);
-
-  // Collect UTMs and click IDs from current URL
+  var vid=ck('cp_t_'+SL);
   var u=new URL(location.href);
-  var params={
-    cid:cid,
-    ref:document.referrer||'',
-    utm_source:u.searchParams.get('utm_source')||'',
-    utm_medium:u.searchParams.get('utm_medium')||'',
-    utm_campaign:u.searchParams.get('utm_campaign')||'',
-    utm_term:u.searchParams.get('utm_term')||'',
-    utm_content:u.searchParams.get('utm_content')||'',
-    fbclid:u.searchParams.get('fbclid')||'',
-    gclid:u.searchParams.get('gclid')||'',
-    ttclid:u.searchParams.get('ttclid')||''
-  };
-  if(vid) params.vid=vid;
+  var params={cid:cid,ref:document.referrer||''};
+  ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','fbclid','gclid','ttclid'].forEach(function(k){
+    var v=u.searchParams.get(k);if(v)params[k]=v;
+  });
+  if(vid)params.vid=vid;
 
-  // Build query string
-  var qs=Object.keys(params).filter(function(k){return params[k];}).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);}).join('&');
+  var qs=Object.keys(params).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);}).join('&');
 
-  // Fetch variation from EasyTest
-  fetch(H+'/api/split/'+SL+'?'+qs,{credentials:'omit'})
-    .then(function(r){return r.json();})
+  function applyHtml(html){
+    // Parse the returned HTML and replace <head> and <body> contents
+    var parser=new DOMParser();
+    var doc=parser.parseFromString(html,'text/html');
+
+    // Replace <title>
+    if(doc.title) document.title=doc.title;
+
+    // Replace <body> content
+    var newBody=doc.body;
+    if(newBody){
+      document.body.innerHTML=newBody.innerHTML;
+      // Copy body attributes (class, style, etc.)
+      Array.from(newBody.attributes).forEach(function(a){document.body.setAttribute(a.name,a.value);});
+    }
+
+    // Inject <head> scripts and styles that aren't already present
+    Array.from(doc.head.children).forEach(function(el){
+      if(el.tagName==='SCRIPT'){
+        var s=document.createElement('script');
+        if(el.src)s.src=el.src;else s.textContent=el.textContent;
+        if(el.type)s.type=el.type;
+        document.head.appendChild(s);
+      } else if(el.tagName==='STYLE'||el.tagName==='LINK'){
+        document.head.appendChild(el.cloneNode(true));
+      }
+    });
+  }
+
+  fetch(H+'/api/split/'+SL+'?'+qs,{credentials:'omit',mode:'cors'})
+    .then(function(r){if(!r.ok)throw new Error('status '+r.status);return r.json();})
     .then(function(d){
-      if(!d.html) return;
-      // Save sticky cookie
-      sc('cp_t_'+SL, d.variation_id, 30);
-      sc('cp_uid', d.cid||cid, 30);
-      // Replace entire page content
-      document.open();
-      document.write(d.html);
-      document.close();
-      // Push variation name to dataLayer for GTM
+      if(!d.html)return;
+      sc('cp_t_'+SL,String(d.variation_id),30);
+      if(d.cid)sc('cp_uid',d.cid,30);
+      applyHtml(d.html);
       window.dataLayer=window.dataLayer||[];
       window.dataLayer.push({event:'easytest_variation',easytest_variation:d.variation_name,easytest_test:SL});
     })
-    .catch(function(){/* fail silently — original page stays */});
+    .catch(function(e){console.warn('[EasyTest] split falhou:',e.message);});
 })();`);
 });
 
