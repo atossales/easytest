@@ -31,6 +31,8 @@ function getEvent(body) {
 const CONVERSION_EVENTS = new Set([
   'transaction.approved',
   'release.access',
+  'conceder.acesso',
+  'access.granted',
   'order.completed',
 ]);
 
