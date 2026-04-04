@@ -524,6 +524,7 @@ function buildVarCard(v, i, testId) {
 
   return '<div class="vc' + winnerClass + '">' +
     '<div class="vct" style="background:' + color + '"></div>' +
+    '<div style="font-size:9px;font-weight:700;color:var(--g3);margin-top:4px">#' + v.id + '</div>' +
     '<div class="vcb"><div class="vcn">' + esc(v.name) + '</div>' + sigBadge + '</div>' +
     '<div class="vcr" style="color:' + color + '">' + v.conversion_rate + '%</div>' +
     '<div class="vcl">taxa de conversão</div>' +
