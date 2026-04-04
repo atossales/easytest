@@ -440,7 +440,8 @@ app.get('/api/split/:slug', publicLimiter, (req, res) => {
 // Usage: <script src="https://EASYTEST_HOST/split.js?test=meu-slug"></script>
 // Runs on the client domain, fetches variation HTML, replaces page content.
 app.get('/split.js', (req, res) => {
-  const host = SITE_URL || getSetting('site_url') || (req.protocol + '://' + req.get('host'));
+  // Priority: env var > request host (never use DB setting which may be stale)
+  const host = process.env.SITE_URL || (req.protocol + '://' + req.get('host'));
   const slug = req.query.test || '';
 
   res.set('Access-Control-Allow-Origin', '*');
