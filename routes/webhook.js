@@ -6,8 +6,14 @@ const logger    = require('../lib/logger');
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function extractCid(body) {
-  // 1. Try payload.data.utms array (The Members passes UTMs as [{name, value}])
-  const utms = body?.payload?.data?.utms || body?.data?.utms || [];
+  // 1. Try all known UTM array locations (The Members passes UTMs as [{name, value}])
+  // transaction.approved → body.data.order.utms
+  // other events         → body.data.utms or body.payload.data.utms
+  const utms =
+    body?.data?.order?.utms ||
+    body?.payload?.data?.utms ||
+    body?.data?.utms ||
+    [];
   if (Array.isArray(utms)) {
     for (const u of utms) {
       if ((u?.key === 'cp_uid' || u?.name === 'cp_uid') && u?.value) return u.value;
