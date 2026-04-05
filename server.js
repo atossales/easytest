@@ -64,7 +64,8 @@ app.use('/api/reports',  apiLimiter,   require('./routes/reports'));
 app.use('/api/ga4',      apiLimiter,   require('./routes/ga4'));
 app.use('/api/settings', apiLimiter,   require('./routes/settings'));
 app.use('/api/webhook',  trackLimiter, require('./routes/webhook'));
-app.use('/api/ai',       apiLimiter,   require('./routes/ai-analyst'));
+app.use('/api/ai',         apiLimiter,   require('./routes/ai-analyst').router);
+app.use('/api/whatsapp',   apiLimiter,   require('./routes/whatsapp'));
 
 // ── Health check (unauthenticated) ───────────────────────────────────────
 app.get('/health', (req, res) => {
@@ -705,4 +706,6 @@ app.use((err, req, res, _next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   logger.info(`EasyTest v3 started`, { port: PORT, env: process.env.NODE_ENV || 'development' });
+  // Start daily WhatsApp report scheduler
+  require('./jobs/daily-report').startScheduler();
 });

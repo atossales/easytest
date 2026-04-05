@@ -865,7 +865,12 @@ async function rMobileTests(filter) {
 //  SETTINGS
 // ══════════════════════════════════════════════════
 async function rSettings() {
-  const [st, settings] = await Promise.all([api('/api/ga4/status'), api('/api/settings')]);
+  const [st, settings, waCfg, aiPromptData] = await Promise.all([
+    api('/api/ga4/status'),
+    api('/api/settings'),
+    api('/api/whatsapp/config'),
+    api('/api/ai/system-prompt'),
+  ]);
 
   document.getElementById('m').innerHTML =
     '<div class="ph"><div><h1>Configurações</h1><div class="sub">Integrações e preferências globais</div></div></div>' +
@@ -913,7 +918,96 @@ async function rSettings() {
         '<textarea class="fc" id="ga4sa" rows="5" placeholder="Cole o conteúdo do arquivo .json aqui" style="font-family:\'Courier New\',monospace;font-size:10px;resize:vertical"></textarea></div>' +
         '<button class="btn bp" onclick="connGA4()">Conectar GA4</button>') +
     '</div>' +
+
+    // ── AI Agent ──
+    '<div class="card">' +
+    '<div class="set-hd"><h3>🤖 Agente IA — Treinamento</h3><span class="set-tag">Gemini Flash</span></div>' +
+    '<p class="set-desc">Personalize o prompt de sistema do agente. Ele usará este prompt como base para todas as análises. Use variáveis, contexto do negócio, tom de voz e instruções específicas.</p>' +
+    '<div class="fg"><label>Prompt de Sistema</label>' +
+    '<div class="hn">Descreva quem é o agente, o contexto do negócio (Tanajuras, produto, público) e como deve analisar os dados.</div>' +
+    '<textarea class="fc" id="ai-prompt" rows="12" style="font-size:11.5px;line-height:1.6;resize:vertical">' + esc(aiPromptData.prompt || '') + '</textarea></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button class="btn bp" onclick="saveAiPrompt()">Salvar Prompt</button>' +
+    '<button class="btn bs bsm" onclick="resetAiPrompt()">Restaurar padrão</button>' +
+    '</div></div>' +
+
+    // ── WhatsApp ──
+    '<div class="card">' +
+    '<div class="set-hd"><h3>📱 WhatsApp — Alertas e Relatórios</h3>' +
+    '<span class="set-tag' + (waCfg.wa_enabled === '1' ? '' : ' off') + '">' + (waCfg.wa_enabled === '1' ? '✓ Ativo' : 'Inativo') + '</span></div>' +
+    '<p class="set-desc">Envie relatórios automáticos duas vezes por dia para até 2 números. Requer Evolution API ou Z-API configurado nas variáveis de ambiente do servidor.</p>' +
+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
+    '<label style="font-size:12px;font-weight:700">Ativar envios automáticos</label>' +
+    '<input type="checkbox" id="wa-enabled" style="width:16px;height:16px;cursor:pointer"' + (waCfg.wa_enabled === '1' ? ' checked' : '') + '>' +
+    '</div>' +
+
+    '<div class="grid-2">' +
+    '<div class="fg"><label>Número 1</label><div class="hn">Formato: 5511999999999 (DDI+DDD+número, sem +)</div>' +
+    '<input class="fc" id="wa-num1" placeholder="5511999999999" value="' + esc(waCfg.wa_number_1 || '') + '"></div>' +
+    '<div class="fg"><label>Número 2 (opcional)</label>' +
+    '<input class="fc" id="wa-num2" placeholder="5511888888888" value="' + esc(waCfg.wa_number_2 || '') + '"></div>' +
+    '</div>' +
+    '<div class="grid-2">' +
+    '<div class="fg"><label>Horário Manhã</label><div class="hn">Horário de Brasília (UTC-3)</div>' +
+    '<input class="fc" id="wa-morning" type="time" value="' + esc(waCfg.wa_morning_time || '08:00') + '"></div>' +
+    '<div class="fg"><label>Horário Noite</label>' +
+    '<input class="fc" id="wa-evening" type="time" value="' + esc(waCfg.wa_evening_time || '20:00') + '"></div>' +
+    '</div>' +
+
+    '<div class="fg"><label>Template da Mensagem</label>' +
+    '<div class="hn">Variáveis disponíveis: <code>{{data}}</code> <code>{{views_hoje}}</code> <code>{{conv_hoje}}</code> <code>{{cr_hoje}}</code> <code>{{receita_hoje}}</code> <code>{{receita_total}}</code> <code>{{testes}}</code> <code>{{AI}}</code> (gera insight com Gemini). Deixe em branco para usar o template padrão.</div>' +
+    '<textarea class="fc" id="wa-template" rows="10" style="font-size:11px;line-height:1.6;resize:vertical;font-family:\'Courier New\',monospace" placeholder="Deixe em branco para usar o template padrão&#10;&#10;Exemplo:&#10;📈 Relatório {{data}}&#10;Views: {{views_hoje}} | Conv: {{conv_hoje}} | Taxa: {{cr_hoje}}%&#10;💰 Receita hoje: {{receita_hoje}}&#10;&#10;{{testes}}&#10;&#10;🤖 Insight: {{AI}}">' + esc(waCfg.wa_message_template || '') + '</textarea></div>' +
+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
+    '<button class="btn bp" onclick="saveWaConfig()">Salvar configuração</button>' +
+    '<button class="btn bs" onclick="previewWaMsg()">👁 Preview mensagem</button>' +
+    '<button class="btn bs" onclick="sendWaTest()">📤 Enviar teste agora</button>' +
+    '</div>' +
+    '<div id="wa-preview" style="margin-top:12px"></div>' +
+    '</div>' +
+
     '</div>';
+}
+
+async function saveAiPrompt() {
+  const prompt = document.getElementById('ai-prompt').value.trim();
+  if (!prompt) return toast('Prompt não pode ser vazio', true);
+  const r = await api('/api/ai/system-prompt', { method: 'POST', body: { prompt } });
+  if (r.ok) toast('Prompt salvo!'); else toast('Erro ao salvar', true);
+}
+
+async function resetAiPrompt() {
+  if (!confirm('Restaurar o prompt padrão?')) return;
+  const r = await api('/api/ai/reset-prompt', { method: 'POST', body: {} });
+  if (r.ok) { document.getElementById('ai-prompt').value = r.prompt; toast('Prompt restaurado!'); }
+}
+
+async function saveWaConfig() {
+  const body = {
+    wa_enabled:          document.getElementById('wa-enabled').checked ? '1' : '0',
+    wa_number_1:         document.getElementById('wa-num1').value.trim() || null,
+    wa_number_2:         document.getElementById('wa-num2').value.trim() || null,
+    wa_morning_time:     document.getElementById('wa-morning').value || '08:00',
+    wa_evening_time:     document.getElementById('wa-evening').value || '20:00',
+    wa_message_template: document.getElementById('wa-template').value.trim() || null,
+  };
+  const r = await api('/api/whatsapp/config', { method: 'POST', body });
+  if (r.ok) toast('Configuração WhatsApp salva!'); else toast('Erro ao salvar', true);
+}
+
+async function previewWaMsg() {
+  const box = document.getElementById('wa-preview');
+  box.innerHTML = '<div style="font-size:11px;color:var(--g5)">Carregando preview...</div>';
+  const d = await api('/api/whatsapp/preview');
+  if (d.error) { box.innerHTML = '<div style="color:var(--rd);font-size:11px">Erro: ' + esc(d.error) + '</div>'; return; }
+  box.innerHTML = '<div style="background:#ECF8F0;border:1px solid #B7E4C7;border-radius:10px;padding:14px;font-size:11.5px;line-height:1.7;white-space:pre-wrap;font-family:\'Courier New\',monospace;max-height:400px;overflow-y:auto">' + esc(d.text) + '</div>';
+}
+
+async function sendWaTest() {
+  if (!confirm('Enviar mensagem de teste para o Número 1 agora?')) return;
+  const r = await api('/api/whatsapp/test-send', { method: 'POST', body: { period: 'morning' } });
+  if (r.ok) toast('Mensagem enviada!'); else toast('Erro: ' + (r.error || 'falha'), true);
 }
 
 async function saveMeta() {

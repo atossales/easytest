@@ -1,8 +1,9 @@
 const express = require('express');
 const router  = express.Router();
 const https   = require('https');
-const { getDb } = require('../lib/database');
-const logger    = require('../lib/logger');
+const { getDb, getSetting } = require('../lib/database');
+const { callGemini }        = require('../jobs/report-builder');
+const logger                = require('../lib/logger');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -68,27 +69,32 @@ async function getClarityPages(projectId, token, startDate, endDate) {
   }
 }
 
-// ── Gemini Flash ───────────────────────────────────────────────────────────
-
-async function callGemini(prompt) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY não configurada');
-
-  const url  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-  const body = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
-  };
-
-  const resp = await httpsPost(url, body, {});
-  const text = resp?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Gemini não retornou texto: ' + JSON.stringify(resp).slice(0, 300));
-  return text;
-}
-
 // ── Build analysis prompt ──────────────────────────────────────────────────
 
+const DEFAULT_SYSTEM_PROMPT = `Você é um especialista sênior em tráfego pago (Meta Ads, Google Ads) e UX/UI de landing pages de alta conversão.
+
+Analise os dados abaixo e entregue um relatório executivo em português brasileiro, estruturado assim:
+
+**1. DIAGNÓSTICO GERAL** — O que os números estão dizendo? Qual é a saúde atual do funil?
+
+**2. ANÁLISE DE TRÁFEGO** — Qualidade do tráfego, canais, padrões comportamentais (rage clicks, dead clicks, scroll depth se disponível).
+
+**3. ANÁLISE DE UX/UI** — Com base no comportamento (Clarity), o que está travando o visitante? Onde está o maior abandono?
+
+**4. ANÁLISE POR VARIAÇÃO** (se houver teste A/B) — Qual variação está ganhando e por quê? O que explica a diferença?
+
+**5. RECEITA E ROI** — Qual variação gera mais dinheiro? Qual o ticket médio? Tem orderbump impactando?
+
+**6. AÇÕES PRIORITÁRIAS** — Liste as 3 a 5 ações mais importantes ordenadas por impacto esperado. Seja específico.
+
+**7. ALERTAS** — O que precisa de atenção imediata?
+
+Seja direto, específico e prático. Evite linguagem vaga. Use dados reais dos inputs abaixo.`;
+
 function buildPrompt({ testData, clarityMetrics, clarityPages, scope }) {
+  // Load custom system prompt from settings (fallback to default)
+  const systemPrompt = getSetting('ai_system_prompt') || DEFAULT_SYSTEM_PROMPT;
+
   const abSection = testData ? `
 ## Dados do Teste A/B (EasyTest)
 - Nome: ${testData.name}
@@ -113,25 +119,7 @@ ${JSON.stringify(clarityMetrics, null, 2).slice(0, 3000)}
 ${JSON.stringify(clarityPages, null, 2).slice(0, 2000)}
 ` : '';
 
-  return `Você é um especialista sênior em tráfego pago (Meta Ads, Google Ads) e UX/UI de landing pages de alta conversão.
-
-Analise os dados abaixo e entregue um relatório executivo em português brasileiro, estruturado assim:
-
-**1. DIAGNÓSTICO GERAL** — O que os números estão dizendo? Qual é a saúde atual do funil?
-
-**2. ANÁLISE DE TRÁFEGO** — Qualidade do tráfego, canais, padrões comportamentais (rage clicks, dead clicks, scroll depth se disponível).
-
-**3. ANÁLISE DE UX/UI** — Com base no comportamento (Clarity), o que está travando o visitante? Onde está o maior abandono?
-
-**4. ANÁLISE POR VARIAÇÃO** (se houver teste A/B) — Qual variação está ganhando e por quê? O que explica a diferença?
-
-**5. RECEITA E ROI** — Qual variação gera mais dinheiro? Qual o ticket médio? Tem orderbump impactando?
-
-**6. AÇÕES PRIORITÁRIAS** — Liste as 3 a 5 ações mais importantes ordenadas por impacto esperado. Seja específico.
-
-**7. ALERTAS** — O que precisa de atenção imediata?
-
-Seja direto, específico e prático. Evite linguagem vaga. Use dados reais dos inputs abaixo.
+  return `${systemPrompt}
 
 ---
 ${scope === 'all' ? '## ANÁLISE GERAL — TODAS AS PÁGINAS' : '## ANÁLISE DE PÁGINA ESPECÍFICA'}
@@ -268,4 +256,26 @@ router.get('/analyze/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+// ── GET /api/ai/system-prompt ─────────────────────────────────────────────
+router.get('/system-prompt', (req, res) => {
+  res.json({ prompt: getSetting('ai_system_prompt') || DEFAULT_SYSTEM_PROMPT });
+});
+
+// ── POST /api/ai/system-prompt ────────────────────────────────────────────
+router.post('/system-prompt', express.json(), (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: 'prompt inválido' });
+  const { setSetting } = require('../lib/database');
+  setSetting('ai_system_prompt', prompt.trim());
+  logger.info('AI system prompt updated');
+  res.json({ ok: true });
+});
+
+// ── POST /api/ai/reset-prompt ─────────────────────────────────────────────
+router.post('/reset-prompt', (req, res) => {
+  const { setSetting } = require('../lib/database');
+  setSetting('ai_system_prompt', null);
+  res.json({ ok: true, prompt: DEFAULT_SYSTEM_PROMPT });
+});
+
+module.exports = { router, DEFAULT_SYSTEM_PROMPT };
