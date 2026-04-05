@@ -81,19 +81,61 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
 .coll summary::before{content:'▶ ';font-size:10px}.coll[open] summary::before{content:'▼ '}
 .coll .inner{padding:0 14px 14px}
 .warn{background:var(--bl);border-radius:var(--s);padding:10px 14px;font-size:11px;color:var(--b);font-weight:500;margin:12px 0;line-height:1.5}
-/* ── Variation Cards ── */
-.vc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:12px;margin-bottom:16px}
-.vc{background:var(--w);border:1.5px solid var(--g2);border-radius:var(--r);padding:18px 16px;position:relative;overflow:hidden;transition:box-shadow .15s,border-color .15s}
-.vc:hover{box-shadow:0 4px 18px rgba(0,0,0,.09);border-color:var(--g3)}
-.vc.vc-winner{border-color:#6EE7B7;box-shadow:0 0 0 2px rgba(0,196,140,.12)}
-.vc .vct{height:3px;position:absolute;top:0;left:0;right:0}
+/* ── Variation Cards — Liquid Glass ── */
+.vc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-bottom:16px}
+.vc{
+  background:rgba(255,255,255,0.72);
+  backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid rgba(255,255,255,0.55);
+  border-radius:18px;
+  padding:20px 18px;
+  position:relative;
+  overflow:hidden;
+  transition:box-shadow .2s,transform .2s,border-color .2s;
+  box-shadow:0 4px 24px rgba(0,0,0,.07),0 1px 0 rgba(255,255,255,.9) inset;
+}
+.vc::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);
+}
+.vc:hover{box-shadow:0 12px 40px rgba(0,0,0,.13),0 1px 0 rgba(255,255,255,.9) inset;transform:translateY(-2px);border-color:rgba(255,255,255,.75)}
+.vc.vc-winner{
+  border-color:rgba(0,196,140,.45);
+  background:rgba(230,250,242,.82);
+  box-shadow:0 0 0 2px rgba(0,196,140,.18),0 8px 32px rgba(0,196,140,.12);
+}
+.vc.vc-paused{opacity:.5;filter:grayscale(.4)}
+.vc .vct{height:3px;position:absolute;top:0;left:0;right:0;border-radius:18px 18px 0 0}
 .vc .vcb{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;margin-top:4px}
 .vc .vcn{font-weight:800;font-size:12.5px;color:var(--bk);flex:1;margin-right:4px}
-.vc .vcr{font-size:34px;font-weight:900;letter-spacing:-2px;margin:8px 0 1px;line-height:1}
+.vc .vcr{font-size:36px;font-weight:900;letter-spacing:-2px;margin:8px 0 1px;line-height:1}
 .vc .vcl{font-size:10px;color:var(--g5);font-weight:500;margin-bottom:10px}
-.vc .vcs{display:flex;gap:16px;border-top:1px solid var(--g1);padding-top:10px}
+.vc .vcs{display:flex;gap:16px;border-top:1px solid rgba(0,0,0,.07);padding-top:10px}
 .vc .vcsi{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g5)}
 .vc .vcv{font-size:13px;font-weight:800;color:var(--bk);margin-top:2px}
+/* ── Cinematic Toggle Switch ── */
+.var-sw{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;padding:8px 10px;background:rgba(0,0,0,.04);border-radius:12px;border:1px solid rgba(0,0,0,.07);cursor:pointer;transition:background .2s;user-select:none}
+.var-sw:hover{background:rgba(0,0,0,.07)}
+.var-sw .sw-lbl{font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;transition:color .3s;width:22px;text-align:center}
+.var-sw .sw-lbl.off{color:#aaa}.var-sw .sw-lbl.off.dim{color:#ddd}
+.var-sw .sw-lbl.on{color:#34d399;text-shadow:0 0 8px rgba(52,211,153,.5)}.var-sw .sw-lbl.on.dim{color:#ccc;text-shadow:none}
+.sw-track{position:relative;width:44px;height:24px;border-radius:12px;transition:background .3s;flex-shrink:0}
+.sw-track.on{background:#064e3b}.sw-track.off{background:#d1d5db}
+.sw-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;transition:transform .3s cubic-bezier(.5,1.8,.5,.8),background .3s;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.sw-track.on .sw-thumb{transform:translateX(20px);background:#34d399}
+.sw-track.off .sw-thumb{transform:translateX(0);background:#9ca3af}
+.sw-thumb::after{content:'';position:absolute;top:4px;left:4px;width:5px;height:3px;background:rgba(255,255,255,.35);border-radius:3px}
+/* ── Date range filter ── */
+.dr-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.dr-group{display:flex;align-items:center;gap:0;background:var(--g0);border:1px solid var(--g2);border-radius:10px;overflow:hidden}
+.dr-btn{padding:6px 12px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;border:none;background:transparent;color:var(--g5);cursor:pointer;transition:all .15s;white-space:nowrap;border-right:1px solid var(--g2)}
+.dr-btn:last-child{border-right:none}
+.dr-btn:hover{background:var(--g1);color:var(--bk)}
+.dr-btn.dr-active{background:var(--bk);color:#fff}
+.dr-custom{display:flex;align-items:center;gap:5px;padding:4px 8px;background:var(--g0);border:1px solid var(--g2);border-radius:10px}
+.dr-custom label{font-size:9px;font-weight:700;color:var(--g5);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.dr-custom input[type=date]{border:none;background:transparent;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;color:var(--bk);outline:none;cursor:pointer;padding:2px 0}
 /* Significance badges */
 .sig{display:inline-block;padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700;white-space:nowrap;letter-spacing:.2px}
 .sig-ctrl{background:var(--g1);color:var(--g5)}
@@ -166,6 +208,24 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
 @keyframes pulse{0%,80%,100%{opacity:.3}40%{opacity:1}}
 /* ── Revenue badge ── */
 .rev-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#D1FAE5;color:#065F46;border-radius:20px;font-size:10px;font-weight:700}
+/* ── Mobile bottom nav ── */
+.mob-nav{display:none}
+@media(max-width:768px){
+  .mob-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;
+    background:#fff;border-top:1px solid var(--g2);z-index:200;
+    padding:4px 0 max(env(safe-area-inset-bottom),4px);
+    box-shadow:0 -2px 12px rgba(0,0,0,.07);
+  }
+  .mob-nav a{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;padding:5px 4px;font-size:9px;font-weight:700;color:var(--g5);
+    cursor:pointer;text-decoration:none;transition:color .12s;-webkit-tap-highlight-color:transparent;
+  }
+  .mob-nav a.on{color:var(--b)}
+  .mob-nav a svg{width:20px;height:20px}
+  .mn{padding-bottom:72px}
+}
 </style>
 </head>
 <body>
@@ -186,6 +246,14 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Novo Teste
     </a>
+    <a onclick="go('ai')" data-p="ai">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+      Agente IA
+    </a>
+    <a onclick="go('messages')" data-p="messages">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Mensagens
+    </a>
     <a onclick="go('settings')" data-p="settings">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Configurações
@@ -204,6 +272,30 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
 
 <main class="mn" id="m"></main>
 </div>
+
+<nav class="mob-nav" id="mob-nav">
+  <a onclick="go('dash')" data-mp="dash" class="on">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </a>
+  <a onclick="go('tests')" data-mp="tests">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+    Testes
+  </a>
+  <a onclick="go('new')" data-mp="new">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Novo
+  </a>
+  <a onclick="go('ai')" data-mp="ai">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+    Agente IA
+  </a>
+  <a onclick="go('settings')" data-mp="settings">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    Config
+  </a>
+</nav>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -217,7 +309,11 @@ function go(p, d) {
   document.querySelectorAll('.sb a[data-p]').forEach(a => a.classList.remove('on'));
   const l = document.querySelector('[data-p="' + p + '"]');
   if (l) l.classList.add('on');
-  ({dash: rDash, tests: rTestsAuto, new: rNew, settings: rSettings, report: rRpt})[p]?.(d);
+  // sync mobile bottom nav
+  document.querySelectorAll('.mob-nav a[data-mp]').forEach(a => a.classList.remove('on'));
+  const ml = document.querySelector('[data-mp="' + p + '"]');
+  if (ml) ml.classList.add('on');
+  ({dash: rDash, tests: rTestsAuto, new: rNew, settings: rSettings, report: rRpt, ai: rAI, messages: rMessages})[p]?.(d);
 }
 function toast(m, err) {
   const e = document.getElementById('toast');
@@ -424,9 +520,11 @@ async function publish() {
 // ══════════════════════════════════════════════════
 //  REPORT PAGE
 // ══════════════════════════════════════════════════
-async function rRpt(id, range) {
-  const r = range || '30';
-  const d = await api('/api/reports/' + id + '?range=' + r);
+async function rRpt(id, range, start, end) {
+  const r   = range || '30';
+  let qs    = 'range=' + r;
+  if (start && end) qs = 'start=' + start + '&end=' + end;
+  const d   = await api('/api/reports/' + id + '?' + qs);
   const s = d.summary || {};
   const url = d.test && d.test.custom_domain
     ? 'https://' + d.test.custom_domain
@@ -532,12 +630,6 @@ async function rRpt(id, range) {
     '<button class="btn bs" onclick="rRpt(' + id + ',\'' + r + '\')">' +
     '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' +
     'Atualizar</button>' +
-    '<select class="rs" onchange="rRpt(' + id + ',this.value)">' +
-    '<option value="7"' + (r==='7'?' selected':'') + '>7 dias</option>' +
-    '<option value="30"' + (r==='30'?' selected':'') + '>30 dias</option>' +
-    '<option value="90"' + (r==='90'?' selected':'') + '>90 dias</option>' +
-    '<option value="365"' + (r==='365'?' selected':'') + '>1 ano</option>' +
-    '</select>' +
     '<a href="/api/reports/' + id + '/export.csv" class="btn bs" download>' +
     '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
     'CSV</a>' +
@@ -545,6 +637,7 @@ async function rRpt(id, range) {
     '<button class="btn br bsm" onclick="delTest(' + id + ')">Excluir</button>' +
     '</div></div>' +
     (url ? '<div class="tl"><strong style="font-size:10px;color:var(--g5);white-space:nowrap">LINK DO TESTE:</strong><code>' + url + '</code><button onclick="navigator.clipboard.writeText(\'' + url + '\');toast(\'Copiado!\')">Copiar</button></div>' : '') +
+    buildDateFilter(id, r, start, end) +
     '<div class="sg" style="margin-top:14px">' +
     '<div class="sc"><div class="sl">Views</div><div class="sv">' + N(s.total_views) + '</div></div>' +
     '<div class="sc"><div class="sl">Conversões</div><div class="sv green">' + N(s.total_conversions) + '</div></div>' +
@@ -696,15 +789,14 @@ function buildVarCard(v, i, testId) {
 
   const isActive   = v.active !== 0;
   const toggleBtn  = testId
-    ? '<button onclick="toggleVariation(' + testId + ',' + v.id + ',' + (isActive ? 'false' : 'true') + ',event)" ' +
-      'style="margin-top:8px;width:100%;padding:5px 0;font-size:10px;font-weight:700;font-family:\'Montserrat\',sans-serif;border-radius:6px;border:none;cursor:pointer;' +
-      (isActive
-        ? 'background:#FFECEC;color:#FF4D4D">'  + '⏸ Pausar variação'
-        : 'background:#E6FAF3;color:#00A97F">') + '▶ Ativar variação' + '</button>'
+    ? '<div class="var-sw" onclick="toggleVariation(' + testId + ',' + v.id + ',' + (isActive ? 'false' : 'true') + ',event)" title="' + (isActive ? 'Pausar' : 'Ativar') + ' variação">' +
+      '<span class="sw-lbl off' + (isActive ? ' dim' : '') + '">OFF</span>' +
+      '<div class="sw-track ' + (isActive ? 'on' : 'off') + '"><div class="sw-thumb"></div></div>' +
+      '<span class="sw-lbl on' + (!isActive ? ' dim' : '') + '">ON</span>' +
+      '</div>'
     : '';
 
-  const winnerClass = sig && (sig.confident95 || sig.confident99) && !isCtrl ? ' vc-winner' : '';
-  const pausedStyle = !isActive ? 'opacity:.55;' : '';
+  const winnerClass = (sig && (sig.confident95 || sig.confident99) && !isCtrl ? ' vc-winner' : '') + (!isActive ? ' vc-paused' : '');
 
   const revStr = v.revenue_cents > 0
     ? 'R$ ' + (v.revenue_cents / 100).toLocaleString('pt-BR', {minimumFractionDigits:2})
@@ -713,7 +805,7 @@ function buildVarCard(v, i, testId) {
     ? 'R$ ' + (v.revenue_cents / v.conversions / 100).toLocaleString('pt-BR', {minimumFractionDigits:2})
     : '';
 
-  return '<div class="vc' + winnerClass + '" style="' + pausedStyle + '">' +
+  return '<div class="vc' + winnerClass + '">' +
     '<div class="vct" style="background:' + color + '"></div>' +
     '<div class="vcb" style="margin-top:6px"><div style="font-size:22px;font-weight:900;color:var(--b);letter-spacing:-1px;line-height:1">#' + v.id + '</div>' + sigBadge + '</div>' +
     '<div style="font-size:11px;font-weight:700;color:var(--g5);margin-bottom:4px">' + esc(v.name) + '</div>' +
@@ -769,12 +861,47 @@ function buildSampleBlock(summary, variations) {
 
 async function toggleVariation(testId, varId, activate, evt) {
   evt && evt.stopPropagation();
-  const action = activate ? 'ativar' : 'pausar';
   if (!confirm((activate ? '▶ Ativar' : '⏸ Pausar') + ' esta variação?\n\nO tráfego será redistribuído automaticamente entre as variações ativas.')) return;
   const r = await api('/api/tests/' + testId + '/variations/' + varId, { method: 'PUT', body: { active: activate } });
   if (r.error) { toast('Erro: ' + r.error, true); return; }
   toast(activate ? 'Variação ativada!' : 'Variação pausada!');
   rRpt(testId);
+}
+
+// ── Date range filter builder ─────────────────────
+function buildDateFilter(testId, activeRange, activeStart, activeEnd) {
+  const ranges = [
+    { v: '1',   l: '1d' },
+    { v: '3',   l: '3d' },
+    { v: '7',   l: '7d' },
+    { v: '14',  l: '14d' },
+    { v: '21',  l: '21d' },
+    { v: '30',  l: '30d' },
+    { v: '0',   l: 'Tudo' },
+  ];
+  const isCustom = !!(activeStart && activeEnd);
+  const btns = ranges.map(function(r) {
+    const active = !isCustom && activeRange === r.v;
+    return '<button class="dr-btn' + (active ? ' dr-active' : '') + '" onclick="rRpt(' + testId + ',\'' + r.v + '\')">' + r.l + '</button>';
+  }).join('');
+  return '<div class="dr-wrap">' +
+    '<div class="dr-group">' + btns + '</div>' +
+    '<div class="dr-custom">' +
+    '<label>De</label>' +
+    '<input type="date" id="dr-s" value="' + (activeStart || '') + '">' +
+    '<label>até</label>' +
+    '<input type="date" id="dr-e" value="' + (activeEnd || '') + '">' +
+    '<button class="dr-btn dr-active" style="border-radius:8px;border:none;padding:5px 11px" onclick="applyCustomDate(' + testId + ')">Aplicar</button>' +
+    '</div>' +
+    '</div>';
+}
+
+function applyCustomDate(testId) {
+  const s = document.getElementById('dr-s').value;
+  const e = document.getElementById('dr-e').value;
+  if (!s || !e) { toast('Selecione data de início e fim', true); return; }
+  if (s > e)    { toast('Data início deve ser antes do fim', true); return; }
+  rRpt(testId, null, s, e);
 }
 
 // ══════════════════════════════════════════════════
@@ -1310,6 +1437,106 @@ async function delTest(id) {
   await api('/api/tests/' + id, { method: 'DELETE' });
   toast('Teste excluído');
   go('tests');
+}
+
+// ══════════════════════════════════════════════════
+//  AGENTE IA — página dedicada
+// ══════════════════════════════════════════════════
+async function rAI() {
+  const ts = await api('/api/tests');
+  document.getElementById('m').innerHTML =
+    '<div class="ph"><div><h1>Agente IA</h1><div class="sub">Análise com Gemini Flash — tráfego pago + UX</div></div></div>' +
+    '<div style="max-width:680px">' +
+    '<div class="ai-box" style="margin-bottom:14px">' +
+    '<h3>🤖 Análise por Teste</h3>' +
+    '<div class="ai-sub">Selecione um teste e o período para obter diagnóstico, ações prioritárias e alertas.</div>' +
+    (ts.length
+      ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">' +
+        '<div style="flex:1;min-width:180px"><label style="font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Teste</label>' +
+        '<select class="fc" id="ai-test-sel" style="background:#111;color:#fff;border-color:#333">' +
+        ts.map(function(t) { return '<option value="' + t.id + '">' + esc(t.name) + '</option>'; }).join('') +
+        '</select></div>' +
+        '<div><label style="font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Período</label>' +
+        '<select class="fc" id="ai-range-sel" style="background:#111;color:#fff;border-color:#333">' +
+        '<option value="7">7 dias</option><option value="14">14 dias</option><option value="30" selected>30 dias</option><option value="0">Todo período</option>' +
+        '</select></div>' +
+        '</div>' +
+        '<button class="btn bp" onclick="runAiAnalysisPage()">Analisar agora</button>'
+      : '<div style="color:#aaa;font-size:12px;padding:8px 0">Nenhum teste disponível. Crie um teste primeiro.</div>') +
+    '<div id="ai-page-out" style="margin-top:14px"></div>' +
+    '</div>' +
+    '<div class="card">' +
+    '<div class="set-hd"><h3>Prompt de Treinamento</h3><span class="set-tag">Gemini Flash</span></div>' +
+    '<p class="set-desc">Personalize como o agente analisa seus dados — contexto do negócio, tom, foco e instruções específicas.</p>' +
+    '<button class="btn bs" onclick="go(\'settings\')">⚙️ Editar nas Configurações</button>' +
+    '</div>' +
+    '</div>';
+}
+
+async function runAiAnalysisPage() {
+  const sel = document.getElementById('ai-test-sel');
+  const rng = document.getElementById('ai-range-sel');
+  const out = document.getElementById('ai-page-out');
+  if (!sel || !out) return;
+  const testId = sel.value, range = rng ? rng.value : '30';
+  out.innerHTML = '<div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Analisando com Gemini Flash...</span></div>';
+  try {
+    const d = await api('/api/ai/analyze/' + testId + '?range=' + range);
+    if (d.error) { out.innerHTML = '<div style="color:#FF6B6B;font-size:12px">⚠️ ' + esc(d.error) + '</div>'; return; }
+    const html = d.analysis
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^(#{1,3} .+)$/gm, '<strong style="font-size:13px;color:#fff;display:block;margin-top:12px;margin-bottom:4px">$1</strong>')
+      .replace(/\n/g, '<br>');
+    out.innerHTML = '<div class="ai-out">' + html + '</div>' +
+      '<div style="font-size:9px;color:#666;margin-top:8px">Gerado em ' + new Date(d.generated_at).toLocaleString('pt-BR') + (d.has_clarity ? ' · com dados Clarity' : '') + '</div>';
+  } catch(e) {
+    out.innerHTML = '<div style="color:#FF6B6B;font-size:12px">⚠️ Erro: ' + e.message + '</div>';
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  MENSAGENS — página dedicada (WhatsApp)
+// ══════════════════════════════════════════════════
+async function rMessages() {
+  const waCfg = await api('/api/whatsapp/config');
+  document.getElementById('m').innerHTML =
+    '<div class="ph"><div><h1>Mensagens</h1><div class="sub">Relatórios automáticos via WhatsApp</div></div></div>' +
+    '<div style="max-width:680px">' +
+    '<div class="card">' +
+    '<div class="set-hd"><h3>📱 WhatsApp — Alertas e Relatórios</h3>' +
+    '<span class="set-tag' + (waCfg.wa_enabled === '1' ? '' : ' off') + '">' + (waCfg.wa_enabled === '1' ? '✓ Ativo' : 'Inativo') + '</span></div>' +
+    '<p class="set-desc">Envie relatórios automáticos duas vezes por dia para até 2 números. Requer Evolution API ou Z-API configurado no servidor.</p>' +
+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
+    '<label style="font-size:12px;font-weight:700">Ativar envios automáticos</label>' +
+    '<input type="checkbox" id="wa-enabled" style="width:16px;height:16px;cursor:pointer"' + (waCfg.wa_enabled === '1' ? ' checked' : '') + '>' +
+    '</div>' +
+
+    '<div class="grid-2">' +
+    '<div class="fg"><label>Número 1</label><div class="hn">Formato: 5511999999999 (DDI+DDD+número, sem +)</div>' +
+    '<input class="fc" id="wa-num1" placeholder="5511999999999" value="' + esc(waCfg.wa_number_1 || '') + '"></div>' +
+    '<div class="fg"><label>Número 2 (opcional)</label>' +
+    '<input class="fc" id="wa-num2" placeholder="5511888888888" value="' + esc(waCfg.wa_number_2 || '') + '"></div>' +
+    '</div>' +
+    '<div class="grid-2">' +
+    '<div class="fg"><label>Horário Manhã</label><div class="hn">Horário de Brasília (UTC-3)</div>' +
+    '<input class="fc" id="wa-morning" type="time" value="' + esc(waCfg.wa_morning_time || '08:00') + '"></div>' +
+    '<div class="fg"><label>Horário Noite</label>' +
+    '<input class="fc" id="wa-evening" type="time" value="' + esc(waCfg.wa_evening_time || '20:00') + '"></div>' +
+    '</div>' +
+
+    '<div class="fg"><label>Template da Mensagem</label>' +
+    '<div class="hn">Variáveis: <code>{{data}}</code> <code>{{views_hoje}}</code> <code>{{conv_hoje}}</code> <code>{{cr_hoje}}</code> <code>{{receita_hoje}}</code> <code>{{receita_total}}</code> <code>{{testes}}</code> <code>{{AI}}</code></div>' +
+    '<textarea class="fc" id="wa-template" rows="10" style="font-size:11px;line-height:1.6;resize:vertical;font-family:\'Courier New\',monospace" placeholder="Deixe em branco para o template padrão&#10;&#10;Exemplo:&#10;📈 Relatório {{data}}&#10;Views: {{views_hoje}} | Conv: {{conv_hoje}} | Taxa: {{cr_hoje}}%&#10;💰 Receita hoje: {{receita_hoje}}&#10;&#10;{{testes}}&#10;&#10;🤖 Insight: {{AI}}">' + esc(waCfg.wa_message_template || '') + '</textarea></div>' +
+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
+    '<button class="btn bp" onclick="saveWaConfig()">Salvar configuração</button>' +
+    '<button class="btn bs" onclick="previewWaMsg()">👁 Preview</button>' +
+    '<button class="btn bs" onclick="sendWaTest()">📤 Enviar teste</button>' +
+    '</div>' +
+    '<div id="wa-preview" style="margin-top:12px"></div>' +
+    '</div>' +
+    '</div>';
 }
 
 // ══════════════════════════════════════════════════
