@@ -694,7 +694,17 @@ function buildVarCard(v, i, testId) {
     ? '<a href="/p/' + testId + '/' + v.id + '" target="_blank" style="font-size:9px;color:var(--b);font-weight:700;text-decoration:none;margin-top:6px;display:inline-block">↗ Preview</a>'
     : '';
 
+  const isActive   = v.active !== 0;
+  const toggleBtn  = testId
+    ? '<button onclick="toggleVariation(' + testId + ',' + v.id + ',' + (isActive ? 'false' : 'true') + ',event)" ' +
+      'style="margin-top:8px;width:100%;padding:5px 0;font-size:10px;font-weight:700;font-family:\'Montserrat\',sans-serif;border-radius:6px;border:none;cursor:pointer;' +
+      (isActive
+        ? 'background:#FFECEC;color:#FF4D4D">'  + '⏸ Pausar variação'
+        : 'background:#E6FAF3;color:#00A97F">') + '▶ Ativar variação' + '</button>'
+    : '';
+
   const winnerClass = sig && (sig.confident95 || sig.confident99) && !isCtrl ? ' vc-winner' : '';
+  const pausedStyle = !isActive ? 'opacity:.55;' : '';
 
   const revStr = v.revenue_cents > 0
     ? 'R$ ' + (v.revenue_cents / 100).toLocaleString('pt-BR', {minimumFractionDigits:2})
@@ -703,7 +713,7 @@ function buildVarCard(v, i, testId) {
     ? 'R$ ' + (v.revenue_cents / v.conversions / 100).toLocaleString('pt-BR', {minimumFractionDigits:2})
     : '';
 
-  return '<div class="vc' + winnerClass + '">' +
+  return '<div class="vc' + winnerClass + '" style="' + pausedStyle + '">' +
     '<div class="vct" style="background:' + color + '"></div>' +
     '<div class="vcb" style="margin-top:6px"><div style="font-size:22px;font-weight:900;color:var(--b);letter-spacing:-1px;line-height:1">#' + v.id + '</div>' + sigBadge + '</div>' +
     '<div style="font-size:11px;font-weight:700;color:var(--g5);margin-bottom:4px">' + esc(v.name) + '</div>' +
@@ -714,7 +724,7 @@ function buildVarCard(v, i, testId) {
     '<div><div class="vcsi">VIEWS</div><div class="vcv">' + N(v.views) + '</div></div>' +
     '<div><div class="vcsi">CONV</div><div class="vcv">' + N(v.conversions) + '</div></div>' +
     '<div><div class="vcsi">RECEITA</div><div class="vcv" style="font-size:11px;color:var(--gn)">' + revStr + '</div>' + (ticketStr ? '<div style="font-size:9px;color:var(--g5)">ticket: ' + ticketStr + '</div>' : '') + '</div>' +
-    '</div>' + previewLink + '</div>';
+    '</div>' + previewLink + toggleBtn + '</div>';
 }
 
 // ── Winner / progress banner ──────────────────────
@@ -755,6 +765,16 @@ function buildSampleBlock(summary, variations) {
     '<div class="spb"><div class="spbf" style="width:' + pct + '%"></div></div>' +
     '<div class="spm"><span>' + N(ctrl.views || 0) + ' visitantes coletados</span><span>Meta: ~' + N(need) + '</span></div>' +
     '</div>';
+}
+
+async function toggleVariation(testId, varId, activate, evt) {
+  evt && evt.stopPropagation();
+  const action = activate ? 'ativar' : 'pausar';
+  if (!confirm((activate ? '▶ Ativar' : '⏸ Pausar') + ' esta variação?\n\nO tráfego será redistribuído automaticamente entre as variações ativas.')) return;
+  const r = await api('/api/tests/' + testId + '/variations/' + varId, { method: 'PUT', body: { active: activate } });
+  if (r.error) { toast('Erro: ' + r.error, true); return; }
+  toast(activate ? 'Variação ativada!' : 'Variação pausada!');
+  rRpt(testId);
 }
 
 // ══════════════════════════════════════════════════
