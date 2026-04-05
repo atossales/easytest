@@ -64,6 +64,7 @@ app.use('/api/reports',  apiLimiter,   require('./routes/reports'));
 app.use('/api/ga4',      apiLimiter,   require('./routes/ga4'));
 app.use('/api/settings', apiLimiter,   require('./routes/settings'));
 app.use('/api/webhook',  trackLimiter, require('./routes/webhook'));
+app.use('/api/ai',       apiLimiter,   require('./routes/ai-analyst'));
 
 // ── Health check (unauthenticated) ───────────────────────────────────────
 app.get('/health', (req, res) => {

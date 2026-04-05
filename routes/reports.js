@@ -27,7 +27,8 @@ router.get('/', (req, res) => {
   const overview = tests.map(t => {
     const views       = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id = ? ${df} ${NO_BOT}`).get(t.id).c || 0;
     const conversions = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id = ? AND i.type = 'conversion' ${df} ${NO_BOT}`).get(t.id).c || 0;
-    return { ...t, views, conversions, conversion_rate: +(views > 0 ? (conversions / views * 100).toFixed(2) : 0) };
+    const revenue     = db.prepare(`SELECT COALESCE(SUM(i.revenue_cents),0) AS r FROM interactions i WHERE i.test_id = ? AND i.type = 'conversion' ${df} ${NO_BOT}`).get(t.id).r || 0;
+    return { ...t, views, conversions, conversion_rate: +(views > 0 ? (conversions / views * 100).toFixed(2) : 0), revenue_cents: revenue };
   });
 
   const ranking = [...overview].filter(t => t.views > 0).sort((a, b) => b.conversion_rate - a.conversion_rate);
@@ -64,7 +65,8 @@ router.get('/:id', (req, res) => {
   const stats = vars.map(v => {
     const views       = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id = ? AND variation_id = ? ${df} ${NO_BOT}`).get(id, v.id).c || 0;
     const conversions = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id = ? AND variation_id = ? AND type = 'conversion' ${df} ${NO_BOT}`).get(id, v.id).c || 0;
-    return { ...v, views, conversions, conversion_rate: +(views > 0 ? (conversions / views * 100).toFixed(2) : 0) };
+    const revenue     = db.prepare(`SELECT COALESCE(SUM(revenue_cents),0) AS r FROM interactions WHERE test_id = ? AND variation_id = ? AND type = 'conversion' ${df} ${NO_BOT}`).get(id, v.id).r || 0;
+    return { ...v, views, conversions, conversion_rate: +(views > 0 ? (conversions / views * 100).toFixed(2) : 0), revenue_cents: revenue };
   });
 
   // Statistical significance vs control (first variation)
@@ -168,6 +170,7 @@ router.get('/:id', (req, res) => {
 
   const tv = enrichedStats.reduce((s, v) => s + v.views, 0);
   const tc = enrichedStats.reduce((s, v) => s + v.conversions, 0);
+  const tr = enrichedStats.reduce((s, v) => s + (v.revenue_cents || 0), 0);
 
   // Funnel — always 4 fixed stages: Visitas, Cadastros, Init. Checkout, Conversões
   // funnel_steps index 0 = Cadastros URL, index 1 = Initiate Checkout URL
@@ -211,6 +214,7 @@ router.get('/:id', (req, res) => {
     summary: {
       total_views:             tv,
       total_conversions:       tc,
+      total_revenue_cents:     tr,
       overall_conversion_rate: +(tv > 0 ? (tc / tv * 100).toFixed(2) : 0),
       sample_needed:           sampleHint,
     },

@@ -145,6 +145,27 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
 .conn-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--gl);color:var(--gn);border-radius:var(--s);font-size:11px;font-weight:700;margin-bottom:14px}
 .conn-badge svg{width:13px;height:13px}
 @media(max-width:768px){.sb{display:none}.mn{margin-left:0;padding:16px}.sg{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}.vc-grid{grid-template-columns:1fr 1fr}}
+/* ── Mobile test cards ── */
+.tc-list{display:flex;flex-direction:column;gap:10px}
+.tc{background:var(--w);border:1px solid var(--g2);border-radius:var(--r);padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.tc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.tc-name{font-weight:800;font-size:14px;color:var(--bk);flex:1;margin-right:8px}
+.tc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.tc-stat .tsl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g5);margin-bottom:2px}
+.tc-stat .tsv{font-size:16px;font-weight:900}
+.tc-acts{display:flex;gap:6px}
+/* ── AI Analysis ── */
+.ai-box{background:linear-gradient(135deg,#0A0A0A 0%,#1a1a2e 100%);border-radius:var(--r);padding:20px;color:#fff;margin-bottom:14px}
+.ai-box h3{font-size:13px;font-weight:800;margin-bottom:4px;color:#fff}
+.ai-box .ai-sub{font-size:11px;color:#aaa;margin-bottom:14px}
+.ai-out{background:rgba(255,255,255,.06);border-radius:8px;padding:16px;font-size:12px;line-height:1.8;color:#e8e8e8;white-space:pre-wrap;word-break:break-word;max-height:600px;overflow-y:auto}
+.ai-out strong,.ai-out b{color:#fff;font-weight:700}
+.ai-loading{display:flex;align-items:center;gap:10px;color:#aaa;font-size:12px}
+.ai-dot{width:6px;height:6px;border-radius:50%;background:var(--b);animation:pulse 1.2s infinite}
+.ai-dot:nth-child(2){animation-delay:.2s}.ai-dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{opacity:.3}40%{opacity:1}}
+/* ── Revenue badge ── */
+.rev-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#D1FAE5;color:#065F46;border-radius:20px;font-size:10px;font-weight:700}
 </style>
 </head>
 <body>
@@ -196,7 +217,7 @@ function go(p, d) {
   document.querySelectorAll('.sb a[data-p]').forEach(a => a.classList.remove('on'));
   const l = document.querySelector('[data-p="' + p + '"]');
   if (l) l.classList.add('on');
-  ({dash: rDash, tests: rTests, new: rNew, settings: rSettings, report: rRpt})[p]?.(d);
+  ({dash: rDash, tests: rTestsAuto, new: rNew, settings: rSettings, report: rRpt})[p]?.(d);
 }
 function toast(m, err) {
   const e = document.getElementById('toast');
@@ -274,8 +295,12 @@ async function rDash() {
 }
 
 // ══════════════════════════════════════════════════
-//  TESTS LIST
+//  TESTS LIST — auto-selects mobile or desktop view
 // ══════════════════════════════════════════════════
+function rTestsAuto() {
+  if (window.innerWidth <= 768) { rMobileTests(); } else { rTests(); }
+}
+
 async function rTests() {
   const ts = await api('/api/tests');
   document.getElementById('m').innerHTML =
@@ -408,7 +433,10 @@ async function rRpt(id, range) {
     : (d.test && d.test.test_uri ? O + '/t/' + d.test.test_uri : '');
 
   // Banner
-  const sigVars = (d.variations || []).filter(function(v) { return !v.isControl && v.significance && v.significance.confident95; });
+  // Only declare a winner when uplift is positive AND statistically significant
+  const sigVars = (d.variations || []).filter(function(v) {
+    return !v.isControl && v.significance && v.significance.confident95 && (v.significance.uplift || 0) > 0;
+  });
   sigVars.sort(function(a, b) { return (b.significance.uplift || 0) - (a.significance.uplift || 0); });
   const banner = buildBanner(sigVars[0], s);
 
@@ -521,7 +549,7 @@ async function rRpt(id, range) {
     '<div class="sc"><div class="sl">Views</div><div class="sv">' + N(s.total_views) + '</div></div>' +
     '<div class="sc"><div class="sl">Conversões</div><div class="sv green">' + N(s.total_conversions) + '</div></div>' +
     '<div class="sc"><div class="sl">Taxa Geral</div><div class="sv blue">' + (s.overall_conversion_rate || '0.00') + '%</div></div>' +
-    '<div class="sc"><div class="sl">Amostra Necessária</div><div class="sv" style="font-size:16px">' + (s.sample_needed ? '~' + N(s.sample_needed) : '—') + '</div><div class="st">por variação (MDE 20%)</div></div>' +
+    '<div class="sc"><div class="sl">Receita Total</div><div class="sv green">R$ ' + ((s.total_revenue_cents || 0) / 100).toLocaleString('pt-BR', {minimumFractionDigits:2}) + '</div><div class="st">ticket médio: R$ ' + (s.total_conversions > 0 ? ((s.total_revenue_cents || 0) / s.total_conversions / 100).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—') + '</div></div>' +
     '</div>' +
     banner +
     '<div class="vc-grid">' + cards + '</div>' +
@@ -531,7 +559,8 @@ async function rRpt(id, range) {
     channelModule +
     campaignModule +
     utmModule +
-    '<details class="coll"><summary>📱 Dispositivos</summary><div class="inner" style="padding-top:10px">' + devHtml + '</div></details>';
+    '<details class="coll"><summary>📱 Dispositivos</summary><div class="inner" style="padding-top:10px">' + devHtml + '</div></details>' +
+    buildAiBlock(id);
 
   if (d.chart && d.chart.labels && d.chart.labels.length) {
     const ctx = document.getElementById('ch').getContext('2d');
@@ -667,6 +696,13 @@ function buildVarCard(v, i, testId) {
 
   const winnerClass = sig && (sig.confident95 || sig.confident99) && !isCtrl ? ' vc-winner' : '';
 
+  const revStr = v.revenue_cents > 0
+    ? 'R$ ' + (v.revenue_cents / 100).toLocaleString('pt-BR', {minimumFractionDigits:2})
+    : '—';
+  const ticketStr = v.conversions > 0 && v.revenue_cents > 0
+    ? 'R$ ' + (v.revenue_cents / v.conversions / 100).toLocaleString('pt-BR', {minimumFractionDigits:2})
+    : '';
+
   return '<div class="vc' + winnerClass + '">' +
     '<div class="vct" style="background:' + color + '"></div>' +
     '<div class="vcb" style="margin-top:6px"><div style="font-size:22px;font-weight:900;color:var(--b);letter-spacing:-1px;line-height:1">#' + v.id + '</div>' + sigBadge + '</div>' +
@@ -677,6 +713,7 @@ function buildVarCard(v, i, testId) {
     '<div class="vcs">' +
     '<div><div class="vcsi">VIEWS</div><div class="vcv">' + N(v.views) + '</div></div>' +
     '<div><div class="vcsi">CONV</div><div class="vcv">' + N(v.conversions) + '</div></div>' +
+    '<div><div class="vcsi">RECEITA</div><div class="vcv" style="font-size:11px;color:var(--gn)">' + revStr + '</div>' + (ticketStr ? '<div style="font-size:9px;color:var(--g5)">ticket: ' + ticketStr + '</div>' : '') + '</div>' +
     '</div>' + previewLink + '</div>';
 }
 
@@ -718,6 +755,90 @@ function buildSampleBlock(summary, variations) {
     '<div class="spb"><div class="spbf" style="width:' + pct + '%"></div></div>' +
     '<div class="spm"><span>' + N(ctrl.views || 0) + ' visitantes coletados</span><span>Meta: ~' + N(need) + '</span></div>' +
     '</div>';
+}
+
+// ══════════════════════════════════════════════════
+//  AI ANALYST BLOCK
+// ══════════════════════════════════════════════════
+function buildAiBlock(testId) {
+  return '<div class="ai-box" style="margin-top:14px" id="ai-wrap">' +
+    '<h3>🤖 Análise IA — Especialista em Tráfego + UX</h3>' +
+    '<div class="ai-sub">Gemini Flash analisa seus dados de A/B + Clarity e entrega diagnóstico, ações prioritárias e alertas.</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+    '<button class="btn bp" onclick="runAiAnalysis(' + testId + ',\'7\')">Analisar últimos 7 dias</button>' +
+    '<button class="btn bs" onclick="runAiAnalysis(' + testId + ',\'30\')">30 dias</button>' +
+    '</div>' +
+    '<div id="ai-out"></div>' +
+    '</div>';
+}
+
+async function runAiAnalysis(testId, range) {
+  const out = document.getElementById('ai-out');
+  if (!out) return;
+  out.innerHTML = '<div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Analisando dados com Gemini Flash...</span></div>';
+  try {
+    const d = await api('/api/ai/analyze/' + testId + '?range=' + (range || '7'));
+    if (d.error) { out.innerHTML = '<div style="color:#FF6B6B;font-size:12px">⚠️ ' + esc(d.error) + '</div>'; return; }
+    const html = d.analysis
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^(#{1,3} .+)$/gm, '<strong style="font-size:13px;color:#fff;display:block;margin-top:12px;margin-bottom:4px">$1</strong>')
+      .replace(/\n/g, '<br>');
+    out.innerHTML = '<div class="ai-out">' + html + '</div>' +
+      '<div style="font-size:9px;color:#666;margin-top:8px">Gerado em ' + new Date(d.generated_at).toLocaleString('pt-BR') + (d.has_clarity ? ' · com dados Clarity' : ' · sem dados Clarity') + '</div>';
+  } catch(e) {
+    out.innerHTML = '<div style="color:#FF6B6B;font-size:12px">⚠️ Erro: ' + e.message + '</div>';
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  MOBILE TEST LIST (filterable cards)
+// ══════════════════════════════════════════════════
+async function rMobileTests(filter) {
+  const ts = await api('/api/tests');
+  const q  = (filter || '').toLowerCase();
+  const filtered = q ? ts.filter(function(t) { return t.name.toLowerCase().includes(q); }) : ts;
+
+  // Sort options
+  const sort = document.getElementById('mob-sort') ? document.getElementById('mob-sort').value : 'cr';
+  filtered.sort(function(a, b) {
+    if (sort === 'cr') return (b.total_views > 0 ? b.total_conversions/b.total_views : 0) - (a.total_views > 0 ? a.total_conversions/a.total_views : 0);
+    if (sort === 'views') return b.total_views - a.total_views;
+    if (sort === 'conv') return b.total_conversions - a.total_conversions;
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
+
+  const cards = filtered.map(function(t) {
+    const cr = t.total_views > 0 ? (t.total_conversions / t.total_views * 100).toFixed(1) : '0.0';
+    return '<div class="tc" onclick="go(\'report\',' + t.id + ')">' +
+      '<div class="tc-top">' +
+      '<div class="tc-name">' + esc(t.name) + '</div>' +
+      '<span class="badge ' + (t.active ? 'b-on' : 'b-off') + '">' + (t.active ? 'Ativo' : 'Off') + '</span>' +
+      '</div>' +
+      '<div class="tc-stats">' +
+      '<div class="tc-stat"><div class="tsl">Views</div><div class="tsv">' + N(t.total_views) + '</div></div>' +
+      '<div class="tc-stat"><div class="tsl">Conv</div><div class="tsv" style="color:var(--gn)">' + N(t.total_conversions) + '</div></div>' +
+      '<div class="tc-stat"><div class="tsl">Taxa</div><div class="tsv" style="color:var(--b)">' + cr + '%</div></div>' +
+      '</div>' +
+      '<div class="tc-acts">' +
+      '<button class="btn bs bsm" style="flex:1" onclick="event.stopPropagation();go(\'report\',' + t.id + ')">Ver relatório</button>' +
+      '</div></div>';
+  }).join('') || '<div style="padding:30px;text-align:center;color:var(--g3);font-size:12px">Nenhum teste encontrado</div>';
+
+  const wrap = document.getElementById('mob-list');
+  if (wrap) { wrap.innerHTML = cards; return; }
+
+  document.getElementById('m').innerHTML =
+    '<div class="ph"><div><h1>Meus Testes</h1><div class="sub">' + ts.length + ' teste' + (ts.length !== 1 ? 's' : '') + '</div></div>' +
+    '<button class="btn bp" onclick="go(\'new\')">+ Novo</button></div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:14px">' +
+    '<input class="fc" id="mob-q" placeholder="Buscar teste..." oninput="rMobileTests(this.value)" style="flex:1">' +
+    '<select class="rs" id="mob-sort" onchange="rMobileTests(document.getElementById(\'mob-q\').value)">' +
+    '<option value="cr">Taxa CR</option>' +
+    '<option value="views">Views</option>' +
+    '<option value="conv">Conversões</option>' +
+    '<option value="date">Recentes</option>' +
+    '</select></div>' +
+    '<div class="tc-list" id="mob-list">' + cards + '</div>';
 }
 
 // ══════════════════════════════════════════════════

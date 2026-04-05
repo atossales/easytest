@@ -31,6 +31,21 @@ function getEvent(body) {
   return body?.payload?.event || body?.event || '';
 }
 
+// Extract sale amount in cents from The Members payload
+function extractRevenueCents(body) {
+  // transaction.approved: data.order.transaction.amount (already in cents)
+  const fromTx = body?.data?.order?.transaction?.amount ||
+                 body?.data?.order?.transaction?.total_amount;
+  if (fromTx > 0) return fromTx;
+  // release.access: data.order.total
+  const fromOrder = body?.data?.order?.total || body?.data?.total;
+  if (fromOrder > 0) return fromOrder;
+  // payload wrapper
+  const fromPayload = body?.payload?.data?.transaction?.amount;
+  if (fromPayload > 0) return fromPayload;
+  return 0;
+}
+
 function isConversionEvent(event) {
   if (!event) return false;
   const e = event.toLowerCase();
@@ -81,6 +96,7 @@ router.post('/the-members', express.json(), (req, res) => {
 
   const isConversion = isConversionEvent(event);
   const funnelStepIdx = isConversion ? null : getFunnelStepIndex(event);
+  const revenueCents  = isConversion ? extractRevenueCents(req.body) : 0;
 
   // Skip events that are neither conversion nor funnel steps
   if (!isConversion && funnelStepIdx === null) {
@@ -99,11 +115,11 @@ router.post('/the-members', express.json(), (req, res) => {
 
     if (isConversion) {
       db.prepare(
-        "UPDATE interactions SET type = 'conversion' WHERE test_id = ? AND client_id = ? AND type = 'view'"
-      ).run(t.id, cid);
+        "UPDATE interactions SET type = 'conversion', revenue_cents = ? WHERE test_id = ? AND client_id = ? AND type = 'view'"
+      ).run(revenueCents, t.id, cid);
       converted++;
       logger.info('The Members webhook: conversion registered', {
-        cid: cid.slice(0, 8), test: t.name, event,
+        cid: cid.slice(0, 8), test: t.name, event, revenue_cents: revenueCents,
       });
     } else if (funnelStepIdx !== null) {
       const already = db.prepare(
