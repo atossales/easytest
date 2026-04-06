@@ -1956,18 +1956,63 @@ async function openEditor(testId, varId, varName) {
   var inlineStyles = '';
   doc.querySelectorAll('style').forEach(function(s) { inlineStyles += s.textContent + '\n'; });
 
-  // Carry over <html> and <body> tag attributes as CSS so the canvas iframe
-  // inherits background-color, font-family, margin:0, etc.
   var bodyEl = doc.body;
   var htmlEl = doc.documentElement;
+
+  // ── Extract page design tokens for editor pre-configuration ──────────────
+  // 1. Background: try inline style first, then scan <style> rules
+  function extractCssProp(cssText, selector, prop) {
+    var re = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s*\\{([^}]*)\\}', 'gi');
+    var m = re.exec(cssText);
+    if (!m) return null;
+    var pRe = new RegExp(prop + '\\s*:\\s*([^;\\n]+)', 'i');
+    var pm = pRe.exec(m[1]);
+    return pm ? pm[1].trim() : null;
+  }
+  var allCssText = inlineStyles;
+  var bodyBg = (bodyEl && bodyEl.style.backgroundColor) ||
+    extractCssProp(allCssText, 'body', 'background-color') ||
+    extractCssProp(allCssText, 'body', 'background') || '';
+  var htmlBg = (htmlEl && htmlEl.style.backgroundColor) ||
+    extractCssProp(allCssText, 'html', 'background-color') ||
+    extractCssProp(allCssText, 'html', 'background') || '';
+  var pageBackground = bodyBg || htmlBg || 'transparent';
+
+  // 2. Font family: scan body/html/p/:root CSS
+  var bodyFont = (bodyEl && bodyEl.style.fontFamily) ||
+    extractCssProp(allCssText, 'body', 'font-family') ||
+    extractCssProp(allCssText, ':root', 'font-family') || '';
+
+  // 3. Collect all colors from <style> tags for palette (hex + rgb)
+  var colorSet = {};
+  var colorRe = /(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))/g;
+  var cm;
+  while ((cm = colorRe.exec(allCssText)) !== null) { colorSet[cm[1]] = 1; }
+  var palette = Object.keys(colorSet).slice(0, 18); // top 18 colors
+
+  // 4. Collect all font families referenced in stylesheets
+  var fontSet = {};
+  var fontRe = /font-family\s*:\s*([^;]+)/gi;
+  var fm;
+  while ((fm = fontRe.exec(allCssText)) !== null) {
+    fm[1].split(',').forEach(function(f) {
+      var clean = f.trim().replace(/['"]/g,'');
+      if (clean && clean.length > 1 && clean.length < 60) fontSet[clean] = 1;
+    });
+  }
+  var detectedFonts = Object.keys(fontSet);
+
+  // Build canvasCss: force page background so GrapesJS doesn't override it
+  var forcedBgCss = pageBackground && pageBackground !== 'transparent'
+    ? 'body { background: ' + pageBackground + ' !important; }\n'
+    : '';
+
+  // Carry over <html> and <body> inline styles
   var bodyStyle = (bodyEl && bodyEl.getAttribute('style')) || '';
   var htmlStyle = (htmlEl && htmlEl.getAttribute('style')) || '';
-  var bodyClass = (bodyEl && bodyEl.getAttribute('class')) || '';
-  // Build wrapper CSS that mimics body/html styles
   var wrapperCss = '';
   if (htmlStyle) wrapperCss += 'html { ' + htmlStyle + ' }\n';
   if (bodyStyle) wrapperCss += 'body { ' + bodyStyle + ' }\n';
-  // Also ensure the GrapesJS canvas frame itself has no forced white background
   wrapperCss += '* { box-sizing: border-box; }\n';
   inlineStyles = wrapperCss + inlineStyles;
 
@@ -1989,8 +2034,8 @@ async function openEditor(testId, varId, varName) {
       styles: extCss,  // load external stylesheets inside the iframe (now absolute URLs)
       scripts: [],
     },
-    // Remove GrapesJS default white canvas background so page background shows
-    canvasCss: '.gjs-selected { outline: 3px solid #00C48C !important; } .gjs-hovered { outline: 2px dashed #00C48C88 !important; }',
+    // Force page background and editor selection styles
+    canvasCss: forcedBgCss + '.gjs-selected { outline: 3px solid #00C48C !important; outline-offset:2px; } .gjs-hovered { outline: 2px dashed #00C48C88 !important; }',
     plugins: _gjsPlugin ? [_gjsPlugin] : [],
     pluginsOpts: {},
     undoManager: { trackChanges: true },
@@ -2020,8 +2065,33 @@ async function openEditor(testId, varId, varName) {
     styleManager: {
       appendTo: '.styles-container',
       sectors: [
-        { name: 'Texto', open: true, buildProps: ['font-family','font-size','font-weight','color','text-align','line-height','letter-spacing'] },
-        { name: 'Fundo', open: false, buildProps: ['background-color','background'] },
+        {
+          name: 'Texto', open: true,
+          properties: [
+            {
+              name: 'Fonte', property: 'font-family', type: 'select',
+              list: (detectedFonts.length
+                ? detectedFonts.map(function(f){ return { value: f, name: f }; })
+                : [{value:'sans-serif',name:'Sans-serif'},{value:'serif',name:'Serif'},{value:'monospace',name:'Monospace'}]
+              ),
+            },
+            { name: 'Tamanho', property: 'font-size', type: 'integer', units: ['px','em','rem','%'] },
+            { name: 'Peso', property: 'font-weight', type: 'select',
+              list: [{value:'400',name:'Normal'},{value:'600',name:'Semi-bold'},{value:'700',name:'Bold'},{value:'800',name:'Extra-bold'},{value:'900',name:'Black'}] },
+            { name: 'Cor', property: 'color', type: 'color',
+              colorPicker: { palette: palette.length ? [palette] : undefined } },
+            { name: 'Alinhamento', property: 'text-align', type: 'radio',
+              list: [{value:'left',name:'←'},{value:'center',name:'↔'},{value:'right',name:'→'}] },
+            { name: 'Altura da linha', property: 'line-height', type: 'integer', units: ['','px','em'] },
+          ],
+        },
+        {
+          name: 'Fundo', open: false,
+          properties: [
+            { name: 'Cor de fundo', property: 'background-color', type: 'color',
+              colorPicker: { palette: palette.length ? [palette] : undefined } },
+          ],
+        },
         { name: 'Espaçamento', open: false, buildProps: ['padding','margin'] },
         { name: 'Borda', open: false, buildProps: ['border','border-radius'] },
         { name: 'Tamanho', open: false, buildProps: ['width','max-width','height','display'] },
