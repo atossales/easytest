@@ -54,25 +54,34 @@ async function buildReportText(period) {
   const crToday = totalViewsToday > 0 ? (totalConvToday / totalViewsToday * 100).toFixed(2) : '0.00';
   const now     = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
+  const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
+
   // Per-test variation breakdown
   const variationLines = tests.map(t => {
     const vars = db.prepare(`
       SELECT v.name,
         (SELECT COUNT(*) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='view') AS views,
         (SELECT COUNT(*) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='conversion') AS conv,
-        (SELECT COALESCE(SUM(revenue_cents),0) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='conversion') AS rev
+        (SELECT COALESCE(SUM(revenue_cents),0) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='conversion' AND created_at >= datetime('now','-1 day')) AS rev_today,
+        (SELECT COALESCE(SUM(revenue_cents),0) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='conversion') AS rev_total
       FROM variations v WHERE v.test_id=? AND COALESCE(v.active,1)=1 ORDER BY conv DESC
-    `).all(t.id, t.id, t.id, t.id);
+    `).all(t.id, t.id, t.id, t.id, t.id);
 
-    const varText = vars.map(v => {
+    const varText = vars.map((v, i) => {
       const cr  = v.views > 0 ? (v.conv / v.views * 100).toFixed(1) : '0.0';
-      const rev = v.rev > 0 ? ` | R$ ${(v.rev / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
-      return `  • ${v.name}: ${v.views} vis → ${v.conv} conv (${cr}%)${rev}`;
+      const medal = medals[i] || '•';
+      const rev = v.rev_total > 0
+        ? `\n     💰 Receita total: R$ ${(v.rev_total / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+        : '';
+      return `${medal} *${v.name}*: ${v.views} vis · ${v.conv} conv · *${cr}% CR*${rev}`;
     }).join('\n');
 
     const crT = t.views_total > 0 ? (t.conv_total / t.views_total * 100).toFixed(1) : '0.0';
-    return `📊 *${t.name}*\n  Taxa geral: ${crT}% | Hoje: ${t.conv_today} conv\n${varText}`;
+    const header = `🔬 *${t.name}*\n   Taxa geral: *${crT}%* | Hoje: *${t.conv_today} conv*`;
+    return `${header}\n${varText}`;
   }).join('\n\n');
+
+  const fmtBRL = cents => `R$ ${(cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
   // If custom template exists, use it directly (no AI)
   if (template && !template.includes('{{AI}}')) {
@@ -82,22 +91,26 @@ async function buildReportText(period) {
       .replace(/\{\{views_hoje\}\}/g, totalViewsToday)
       .replace(/\{\{conv_hoje\}\}/g, totalConvToday)
       .replace(/\{\{cr_hoje\}\}/g, crToday)
-      .replace(/\{\{receita_hoje\}\}/g, `R$ ${(totalRevToday / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
-      .replace(/\{\{receita_total\}\}/g, `R$ ${(totalRevAll / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)
+      .replace(/\{\{receita_hoje\}\}/g, fmtBRL(totalRevToday))
+      .replace(/\{\{receita_total\}\}/g, fmtBRL(totalRevAll))
       .replace(/\{\{testes\}\}/g, variationLines);
   }
 
-  // Otherwise build structured summary + optionally call Gemini for insights
+  const divider = '━━━━━━━━━━━━━━━';
+  const periodLabel = period === 'morning' ? '🌅 Manhã' : '🌙 Noite';
+
+  // Build clean structured summary
   const summary = [
-    `📈 *Relatório EasyTest — ${period === 'morning' ? '🌅 Manhã' : '🌙 Noite'} de ${now}*`,
-    '',
-    `👁 Views hoje: *${totalViewsToday}*`,
-    `✅ Conversões hoje: *${totalConvToday}*`,
-    `📊 Taxa hoje: *${crToday}%*`,
-    `💰 Receita hoje: *R$ ${(totalRevToday / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`,
-    `💎 Receita total: *R$ ${(totalRevAll / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*`,
-    '',
+    `📈 *Relatório EasyTest — ${periodLabel} ${now}*`,
+    divider,
+    `👁  Visitas hoje:     *${totalViewsToday}*`,
+    `✅  Conversões:       *${totalConvToday}*`,
+    `📊  Taxa de conv.:    *${crToday}%*`,
+    `💰  Receita hoje:     *${fmtBRL(totalRevToday)}*`,
+    `💎  Receita total:    *${fmtBRL(totalRevAll)}*`,
+    divider,
     variationLines,
+    divider,
   ].join('\n');
 
   // If template contains {{AI}}, call Gemini for a short insight paragraph
