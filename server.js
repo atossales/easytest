@@ -278,7 +278,9 @@ app.get('/t/:slug', publicLimiter, (req, res) => {
 
   logger.debug('Visitor assigned', { slug: req.params.slug, variation: chosen.name, device, cid: cid.slice(0, 8) });
 
-  if (chosen.file_path) return res.redirect(`/p/${test.id}/${chosen.id}`);
+  // Forward original query string so UTMify and other URL-based tracking scripts can read UTMs
+  const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  if (chosen.file_path) return res.redirect(`/p/${test.id}/${chosen.id}${qs}`);
   res.status(404).send('Variação sem arquivo HTML');
 });
 
@@ -685,7 +687,8 @@ app.get('*', publicLimiter, (req, res, next) => {
 
   logger.debug('Custom domain visitor', { host, variation: chosen.name, device, cid: cid.slice(0, 8) });
 
-  if (chosen.file_path) return res.redirect(`/p/${test.id}/${chosen.id}`);
+  const cdQs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  if (chosen.file_path) return res.redirect(`/p/${test.id}/${chosen.id}${cdQs}`);
   res.status(404).send('Variação sem arquivo HTML');
 });
 
