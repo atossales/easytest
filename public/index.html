@@ -275,6 +275,16 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
 .gjs-three-bg{background:#2a2a4a}
 .gjs-four-color{color:#00C48C}
 .gjs-four-color-h:hover{color:#00C48C}
+/* Style panel layout */
+#editor-wrap{display:flex;flex:1;overflow:hidden}
+#editor-wrap #gjs{flex:1;height:100%;overflow:hidden}
+.panel__right{width:260px;background:#0f0f1a;border-left:1px solid #2a2a4a;overflow-y:auto;flex-shrink:0}
+.styles-container{padding:8px 0}
+.styles-container .gjs-sm-sector-title{padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#aaa;cursor:pointer;border-bottom:1px solid #2a2a4a;background:#1a1a2e}
+.styles-container .gjs-sm-properties{padding:8px 12px}
+.styles-container .gjs-sm-field input,.styles-container .gjs-sm-field select{background:#2a2a4a;color:#fff;border:1px solid #3a3a5a;border-radius:4px;padding:3px 6px;font-size:11px;font-family:inherit;width:100%}
+.styles-container .gjs-sm-label{font-size:10px;color:#888;margin-bottom:4px;display:block}
+.panel__right:empty::after{content:'← Selecione um elemento para editar seus estilos';display:block;padding:20px 14px;font-size:11px;color:#555;line-height:1.6}
 </style>
 </head>
 <body>
@@ -286,7 +296,12 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
     <button class="et-btn et-discard" onclick="closeEditor()">✕ Sair sem salvar</button>
     <button class="et-btn et-save" id="editor-save-btn" onclick="saveEditor()">💾 Salvar alterações</button>
   </div>
-  <div id="editor-wrap"><div id="gjs"></div></div>
+  <div id="editor-wrap">
+    <div id="gjs"></div>
+    <div class="panel__right">
+      <div class="styles-container"></div>
+    </div>
+  </div>
 </div>
 
 <div class="app">
@@ -1021,7 +1036,7 @@ function buildVarCard(v, i, testId, ctrl, crowned) {
     : '';
 
   const editBtn = v.file_path && testId
-    ? '<button class="btn bs bsm" style="margin-top:6px;width:100%;font-size:11px;font-weight:800" onclick="event.stopPropagation();openEditor(' + testId + ',' + v.id + ',\'' + esc(v.name).replace(/'/g,"\\'") + '\')">✏️ Editar visualmente</button>'
+    ? '<button class="btn bs bsm" style="margin-top:6px;width:100%;font-size:11px;font-weight:800" data-edit-test="' + testId + '" data-edit-var="' + v.id + '" data-edit-name="' + esc(v.name) + '" onclick="event.stopPropagation();openEditorFromBtn(this)">✏️ Editar visualmente</button>'
     : '';
 
   const isActive   = v.active !== 0;
@@ -1880,6 +1895,23 @@ var _editorTestId   = null;
 var _editorVarId    = null;
 var _editorOriginalHtml = null; // full original HTML for head reconstruction
 
+// Helper: called from data-attribute buttons to avoid inline string escaping issues
+function openEditorFromBtn(btn) {
+  var testId  = btn.getAttribute('data-edit-test');
+  var varId   = btn.getAttribute('data-edit-var');
+  var varName = btn.getAttribute('data-edit-name');
+  openEditor(Number(testId), Number(varId), varName);
+}
+
+// Resolve href to absolute URL using the EasyTest server origin (O)
+function _makeAbsoluteUrl(href) {
+  if (!href) return href;
+  if (/^https?:\/\//i.test(href)) return href; // already absolute
+  if (href.startsWith('//')) return 'https:' + href;
+  if (href.startsWith('/')) return O + href;
+  return O + '/' + href;
+}
+
 async function openEditor(testId, varId, varName) {
   _editorTestId = testId;
   _editorVarId  = varId;
@@ -1914,17 +1946,36 @@ async function openEditor(testId, varId, varName) {
   var parser = new DOMParser();
   var doc = parser.parseFromString(data.html, 'text/html');
 
-  // External CSS links
+  // External CSS links — convert relative URLs to absolute so the iframe can load them
   var extCss = [];
   doc.querySelectorAll('link[rel="stylesheet"]').forEach(function(l) {
     var href = l.getAttribute('href');
-    if (href) extCss.push(href);
+    if (href) extCss.push(_makeAbsoluteUrl(href));
   });
   // Inline <style> blocks
   var inlineStyles = '';
   doc.querySelectorAll('style').forEach(function(s) { inlineStyles += s.textContent + '\n'; });
-  // Body content (without scripts to avoid conflicts)
-  var bodyHtml = doc.body ? doc.body.innerHTML : data.html;
+
+  // Carry over <html> and <body> tag attributes as CSS so the canvas iframe
+  // inherits background-color, font-family, margin:0, etc.
+  var bodyEl = doc.body;
+  var htmlEl = doc.documentElement;
+  var bodyStyle = (bodyEl && bodyEl.getAttribute('style')) || '';
+  var htmlStyle = (htmlEl && htmlEl.getAttribute('style')) || '';
+  var bodyClass = (bodyEl && bodyEl.getAttribute('class')) || '';
+  // Build wrapper CSS that mimics body/html styles
+  var wrapperCss = '';
+  if (htmlStyle) wrapperCss += 'html { ' + htmlStyle + ' }\n';
+  if (bodyStyle) wrapperCss += 'body { ' + bodyStyle + ' }\n';
+  // Also ensure the GrapesJS canvas frame itself has no forced white background
+  wrapperCss += '* { box-sizing: border-box; }\n';
+  inlineStyles = wrapperCss + inlineStyles;
+
+  // Body content
+  var bodyHtml = bodyEl ? bodyEl.innerHTML : data.html;
+
+  // Resolve the plugin: CDN exposes window["gjs-blocks-basic"] (with hyphen), not grapesjsBlocksBasic
+  var _gjsPlugin = window['gjs-blocks-basic'] || null;
 
   // Init GrapesJS
   _editorInstance = grapesjs.init({
@@ -1935,12 +1986,30 @@ async function openEditor(testId, varId, varName) {
     components: bodyHtml,
     style: inlineStyles,
     canvas: {
-      styles: extCss,  // load external stylesheets inside the iframe
+      styles: extCss,  // load external stylesheets inside the iframe (now absolute URLs)
       scripts: [],
     },
-    plugins: [typeof grapesjsBlocksBasic !== 'undefined' ? grapesjsBlocksBasic : function(){}],
+    // Remove GrapesJS default white canvas background so page background shows
+    canvasCss: '.gjs-selected { outline: 3px solid #00C48C !important; } .gjs-hovered { outline: 2px dashed #00C48C88 !important; }',
+    plugins: _gjsPlugin ? [_gjsPlugin] : [],
     pluginsOpts: {},
-    panels: { defaults: [] },
+    undoManager: { trackChanges: true },
+    panels: {
+      defaults: [
+        {
+          id: 'panel-switcher',
+          el: '.panel__switcher',
+          buttons: [
+            { id: 'show-style', active: true, label: 'Estilos', command: 'show-styles', togglable: false }
+          ],
+        },
+        {
+          id: 'views',
+          el: '.panel__right',
+          resizable: { tc: 0, cl: 1, cr: 0, bc: 0, minDim: 240, maxDim: 500, keyWidth: 'flex-basis' },
+        },
+      ],
+    },
     deviceManager: {
       devices: [
         { name: 'Desktop', width: '' },
@@ -1949,6 +2018,7 @@ async function openEditor(testId, varId, varName) {
       ],
     },
     styleManager: {
+      appendTo: '.styles-container',
       sectors: [
         { name: 'Texto', open: true, buildProps: ['font-family','font-size','font-weight','color','text-align','line-height','letter-spacing'] },
         { name: 'Fundo', open: false, buildProps: ['background-color','background'] },
@@ -1957,6 +2027,19 @@ async function openEditor(testId, varId, varName) {
         { name: 'Tamanho', open: false, buildProps: ['width','max-width','height','display'] },
       ],
     },
+  });
+
+  // Ensure "show-styles" command reveals the style manager panel
+  _editorInstance.Commands.add('show-styles', {
+    getRowEl: function(editor) { return editor.getContainer().closest('#editor-wrap').querySelector('.panel__right'); },
+    getLayersEl: function(row) { return row.querySelector('.styles-container'); },
+    run: function(editor) {
+      var pn = editor.Panels.getPanel('views');
+      if (pn) pn.set('visible', true);
+      var sm = editor.StyleManager;
+      if (sm && sm.render) sm.render();
+    },
+    stop: function() {},
   });
 
   // Add device buttons to our topbar
@@ -1979,6 +2062,7 @@ function editorDevice(name) {
 
 function closeEditor() {
   if (_editorInstance) { try { _editorInstance.destroy(); } catch(_) {} _editorInstance = null; }
+  _editorOriginalHtml = null; // clear to avoid stale HTML on next open
   document.getElementById('editor-overlay').classList.remove('open');
   var dev = document.getElementById('editor-devices');
   if (dev) dev.remove();
@@ -2006,7 +2090,9 @@ async function saveEditor() {
     var bodyOpenTag  = bodyTagMatch ? bodyTagMatch[0] : '<body>';
     full = headPart + bodyOpenTag + editedBody + '</body></html>';
   } else {
-    full = '<style>' + editedCss + '</style>\n' + editedBody;
+    // Fallback: original HTML had no </head> — build a minimal valid document
+    var styleTag = editedCss.trim() ? '<style data-gjs="true">' + editedCss + '</style>\n' : '';
+    full = '<!DOCTYPE html><html><head><meta charset="UTF-8">\n' + styleTag + '</head><body>' + editedBody + '</body></html>';
   }
 
   try {
