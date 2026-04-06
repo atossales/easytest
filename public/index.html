@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/grapesjs@0.21.13/dist/css/grapes.min.css">
 <script src="https://unpkg.com/grapesjs@0.21.13/dist/grapes.min.js"></script>
-<script src="https://unpkg.com/grapesjs-preset-webpage@1.0.2/dist/index.js"></script>
+<script src="https://unpkg.com/grapesjs-blocks-basic@1.0.2/dist/index.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--b:#0065FF;--bd:#0050CC;--bl:#E8F0FF;--bk:#0A0A0A;--g7:#404040;--g5:#6B6B6B;--g3:#B0B0B0;--g2:#D4D4D4;--g1:#F0F0F0;--g0:#F8F8F8;--w:#FFF;--gn:#00C48C;--gl:#E6FAF3;--rd:#FF4D4D;--rl:#FFECEC;--or:#FFB84D;--pu:#A855F7;--r:12px;--s:8px}
@@ -1912,8 +1912,8 @@ async function openEditor(testId, varId, varName) {
     height: '100%',
     fromElement: false,
     storageManager: false,
-    plugins: [grapesjsPresetWebpage],
-    pluginsOpts: { [grapesjsPresetWebpage]: {} },
+    plugins: [typeof grapesjsBlocksBasic !== 'undefined' ? grapesjsBlocksBasic : function(){}],
+    pluginsOpts: {},
     panels: { defaults: [] }, // hide default panels, we use our topbar
     deviceManager: {
       devices: [
