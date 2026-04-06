@@ -772,15 +772,16 @@ function buildVarCard(v, i, testId) {
   let upliftHtml = '';
   if (!isCtrl && sig && sig.uplift !== null && sig.uplift !== undefined) {
     const up = sig.uplift;
-    upliftHtml = '<div class="upl ' + (up >= 0 ? 'up' : 'dn') + '">' + (up >= 0 ? '+' : '') + up.toFixed(1) + '% vs controle</div>';
+    upliftHtml = '<div class="upl ' + (up >= 0 ? 'up' : 'dn') + '">' + (up >= 0 ? '▲ +' : '▼ ') + up.toFixed(1) + '% vs variação A</div>';
   }
 
   let confHtml = '';
   if (!isCtrl && sig) {
     const conf = Math.min(100, sig.confidence);
     const barColor = sig.confident99 ? '#064E3B' : sig.confident95 ? '#00C48C' : '#FFB84D';
+    const confLabel = sig.confident99 ? '✅ Resultado confirmado' : sig.confident95 ? '✅ Resultado confiável' : conf < 70 ? '⏳ Dados insuficientes' : '⚠️ Aguardando mais dados';
     confHtml = '<div class="cb"><div class="cbf" style="width:' + conf + '%;background:' + barColor + '"></div></div>' +
-      '<div class="cbl">' + conf.toFixed(0) + '% confiança</div>';
+      '<div class="cbl">' + confLabel + '</div>';
   }
 
   const previewLink = v.file_path && testId
@@ -826,7 +827,7 @@ function buildBanner(bestSig, summary) {
     const conf = sig.confident99 ? '99%' : '95%';
     const upliftStr = sig.uplift !== null ? ' e <strong>+' + sig.uplift.toFixed(1) + '% de uplift</strong>' : '';
     return '<div class="wb win"><div class="wi">🏆</div>' +
-      '<div class="wt"><strong>' + esc(bestSig.name) + '</strong> é vencedora com <strong>' + conf + ' de confiança estatística</strong>' + upliftStr + ' sobre o controle.</div></div>';
+      '<div class="wt"><strong>' + esc(bestSig.name) + '</strong> está convertendo mais' + upliftStr + ' do que a variação A, com resultado confirmado (' + conf + ').</div></div>';
   }
   const need = summary.sample_needed;
   const views = summary.total_views || 0;
