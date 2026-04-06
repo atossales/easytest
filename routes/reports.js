@@ -16,7 +16,8 @@ function dateFilter(range, alias = 'created_at', start = null, end = null) {
     // Validate format to prevent injection
     const re = /^\d{4}-\d{2}-\d{2}$/;
     if (re.test(start) && re.test(end)) {
-      return `AND DATE(${alias}) BETWEEN '${start}' AND '${end}'`;
+      // Use BRT (UTC-3) so "Hoje" and "Ontem" match the user's timezone
+      return `AND DATE(datetime(${alias},'-3 hours')) BETWEEN '${start}' AND '${end}'`;
     }
   }
   const n = safeRange(range);

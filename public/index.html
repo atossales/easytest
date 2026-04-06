@@ -127,15 +127,15 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
 .sw-track.off .sw-thumb{transform:translateX(0);background:#9ca3af}
 .sw-thumb::after{content:'';position:absolute;top:4px;left:4px;width:5px;height:3px;background:rgba(255,255,255,.35);border-radius:3px}
 /* ── Date range filter ── */
-.dr-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-.dr-group{display:flex;align-items:center;gap:0;background:var(--g0);border:1px solid var(--g2);border-radius:10px;overflow:hidden}
-.dr-btn{padding:6px 12px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;border:none;background:transparent;color:var(--g5);cursor:pointer;transition:all .15s;white-space:nowrap;border-right:1px solid var(--g2)}
-.dr-btn:last-child{border-right:none}
-.dr-btn:hover{background:var(--g1);color:var(--bk)}
-.dr-btn.dr-active{background:var(--bk);color:#fff}
-.dr-custom{display:flex;align-items:center;gap:5px;padding:4px 8px;background:var(--g0);border:1px solid var(--g2);border-radius:10px}
-.dr-custom label{font-size:9px;font-weight:700;color:var(--g5);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
-.dr-custom input[type=date]{border:none;background:transparent;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;color:var(--bk);outline:none;cursor:pointer;padding:2px 0}
+.dr-wrap{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.dr-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dr-btn{padding:7px 14px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;border:1.5px solid var(--g2);background:transparent;color:var(--g5);cursor:pointer;transition:all .15s;white-space:nowrap;border-radius:20px}
+.dr-btn:hover{border-color:var(--bk);color:var(--bk)}
+.dr-btn.dr-active{background:var(--bk);color:#fff;border-color:var(--bk)}
+.dr-custom{display:none;align-items:center;gap:8px;padding:10px 14px;background:var(--g0);border:1px solid var(--g2);border-radius:12px;flex-wrap:wrap}
+.dr-custom.open{display:flex}
+.dr-custom input[type=date]{border:1px solid var(--g2);background:#fff;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:600;color:var(--bk);outline:none;cursor:pointer;padding:6px 10px;border-radius:8px}
+.dr-custom .dr-apply{background:var(--bk);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer}
 /* Significance badges */
 .sig{display:inline-block;padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700;white-space:nowrap;letter-spacing:.2px}
 .sig-ctrl{background:var(--g1);color:var(--g5)}
@@ -885,36 +885,44 @@ async function toggleVariation(testId, varId, activate, evt) {
 }
 
 // ── Date range filter builder ─────────────────────
+function brtDay(offset) {
+  var d = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  if (offset) d.setUTCDate(d.getUTCDate() - offset);
+  return d.toISOString().split('T')[0];
+}
+
 function buildDateFilter(testId, activeRange, activeStart, activeEnd) {
-  const ranges = [
-    { v: '1',   l: '1d' },
-    { v: '3',   l: '3d' },
-    { v: '7',   l: '7d' },
-    { v: '14',  l: '14d' },
-    { v: '21',  l: '21d' },
-    { v: '30',  l: '30d' },
-    { v: '0',   l: 'Tudo' },
-  ];
-  const isCustom = !!(activeStart && activeEnd);
-  const btns = ranges.map(function(r) {
-    const active = !isCustom && activeRange === r.v;
-    return '<button class="dr-btn' + (active ? ' dr-active' : '') + '" onclick="rRpt(' + testId + ',\'' + r.v + '\')">' + r.l + '</button>';
-  }).join('');
+  var today = brtDay(0), yesterday = brtDay(1);
+  var isHoje  = activeStart === today     && activeEnd === today;
+  var isOntem = activeStart === yesterday && activeEnd === yesterday;
+  var isCustom = !!(activeStart && activeEnd) && !isHoje && !isOntem;
+
+  function pill(label, active, onclick) {
+    return '<button class="dr-btn' + (active ? ' dr-active' : '') + '" onclick="' + onclick + '">' + label + '</button>';
+  }
+
+  var btns =
+    pill('Hoje',    isHoje,  'rRpt(' + testId + ',null,\'' + today     + '\',\'' + today     + '\')') +
+    pill('Ontem',   isOntem, 'rRpt(' + testId + ',null,\'' + yesterday + '\',\'' + yesterday + '\')') +
+    pill('7 dias',  !isHoje && !isOntem && !isCustom && activeRange === '7',  'rRpt(' + testId + ',\'7\')') +
+    pill('14 dias', !isHoje && !isOntem && !isCustom && activeRange === '14', 'rRpt(' + testId + ',\'14\')') +
+    pill('30 dias', !isHoje && !isOntem && !isCustom && activeRange === '30', 'rRpt(' + testId + ',\'30\')') +
+    pill('Tudo',    !isHoje && !isOntem && !isCustom && activeRange === '0',  'rRpt(' + testId + ',\'0\')') +
+    '<button class="dr-btn' + (isCustom ? ' dr-active' : '') + '" onclick="var p=document.getElementById(\'dr-panel\');p.classList.toggle(\'open\')">📅 Período</button>';
+
   return '<div class="dr-wrap">' +
     '<div class="dr-group">' + btns + '</div>' +
-    '<div class="dr-custom">' +
-    '<label>De</label>' +
+    '<div class="dr-custom' + (isCustom ? ' open' : '') + '" id="dr-panel">' +
     '<input type="date" id="dr-s" value="' + (activeStart || '') + '">' +
-    '<label>até</label>' +
+    '<span style="color:var(--g4);font-size:13px;font-weight:700">→</span>' +
     '<input type="date" id="dr-e" value="' + (activeEnd || '') + '">' +
-    '<button class="dr-btn dr-active" style="border-radius:8px;border:none;padding:5px 11px" onclick="applyCustomDate(' + testId + ')">Aplicar</button>' +
-    '</div>' +
-    '</div>';
+    '<button class="dr-apply" onclick="applyCustomDate(' + testId + ')">Aplicar</button>' +
+    '</div></div>';
 }
 
 function applyCustomDate(testId) {
-  const s = document.getElementById('dr-s').value;
-  const e = document.getElementById('dr-e').value;
+  var s = document.getElementById('dr-s').value;
+  var e = document.getElementById('dr-e').value;
   if (!s || !e) { toast('Selecione data de início e fim', true); return; }
   if (s > e)    { toast('Data início deve ser antes do fim', true); return; }
   rRpt(testId, null, s, e);
