@@ -35,13 +35,17 @@ async function buildReportText(period) {
   // Load custom message template (or use default)
   const template = getSetting('wa_message_template') || null;
 
+  // Use BRT (UTC-3) for "today" date boundaries
   const tests = db.prepare(`
     SELECT t.id, t.name,
-      (SELECT COUNT(*) FROM interactions WHERE test_id=t.id AND type='view'       AND created_at >= datetime('now','-1 day')) AS views_today,
-      (SELECT COUNT(*) FROM interactions WHERE test_id=t.id AND type='conversion' AND created_at >= datetime('now','-1 day')) AS conv_today,
+      (SELECT COUNT(*) FROM interactions WHERE test_id=t.id AND type='view'
+        AND DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))) AS views_today,
+      (SELECT COUNT(*) FROM interactions WHERE test_id=t.id AND type='conversion'
+        AND DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))) AS conv_today,
       (SELECT COUNT(*) FROM interactions WHERE test_id=t.id AND type='view')       AS views_total,
       (SELECT COUNT(*) FROM interactions WHERE test_id=t.id AND type='conversion') AS conv_total,
-      (SELECT COALESCE(SUM(revenue_cents),0) FROM interactions WHERE test_id=t.id AND type='conversion' AND created_at >= datetime('now','-1 day')) AS rev_today,
+      (SELECT COALESCE(SUM(revenue_cents),0) FROM interactions WHERE test_id=t.id AND type='conversion'
+        AND DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))) AS rev_today,
       (SELECT COALESCE(SUM(revenue_cents),0) FROM interactions WHERE test_id=t.id AND type='conversion') AS rev_total
     FROM tests t WHERE t.active = 1
   `).all();
@@ -54,31 +58,31 @@ async function buildReportText(period) {
   const crToday = totalViewsToday > 0 ? (totalConvToday / totalViewsToday * 100).toFixed(2) : '0.00';
   const now     = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-  const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
+  const medals = ['🥇', '🥈', '🥉'];
 
-  // Per-test variation breakdown
+  // Per-test: top 3 variations ranked by CR (total), no per-variation revenue
   const variationLines = tests.map(t => {
     const vars = db.prepare(`
       SELECT v.name,
         (SELECT COUNT(*) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='view') AS views,
-        (SELECT COUNT(*) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='conversion') AS conv,
-        (SELECT COALESCE(SUM(revenue_cents),0) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='conversion' AND created_at >= datetime('now','-1 day')) AS rev_today,
-        (SELECT COALESCE(SUM(revenue_cents),0) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='conversion') AS rev_total
-      FROM variations v WHERE v.test_id=? AND COALESCE(v.active,1)=1 ORDER BY conv DESC
-    `).all(t.id, t.id, t.id, t.id, t.id);
+        (SELECT COUNT(*) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='conversion') AS conv
+      FROM variations v WHERE v.test_id=? AND COALESCE(v.active,1)=1
+    `).all(t.id, t.id, t.id);
 
-    const varText = vars.map((v, i) => {
-      const cr  = v.views > 0 ? (v.conv / v.views * 100).toFixed(1) : '0.0';
-      const medal = medals[i] || '•';
-      const rev = v.rev_total > 0
-        ? `\n     💰 Receita total: R$ ${(v.rev_total / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-        : '';
-      return `${medal} *${v.name}*: ${v.views} vis · ${v.conv} conv · *${cr}% CR*${rev}`;
+    // Sort by CR descending
+    vars.sort((a, b) => {
+      const crA = a.views > 0 ? a.conv / a.views : 0;
+      const crB = b.views > 0 ? b.conv / b.views : 0;
+      return crB - crA;
+    });
+
+    const top3 = vars.slice(0, 3).map((v, i) => {
+      const cr = v.views > 0 ? (v.conv / v.views * 100).toFixed(1) : '0.0';
+      return `${medals[i]} *${v.name}*: *${cr}% CR* (${v.conv} conv / ${v.views} vis)`;
     }).join('\n');
 
     const crT = t.views_total > 0 ? (t.conv_total / t.views_total * 100).toFixed(1) : '0.0';
-    const header = `🔬 *${t.name}*\n   Taxa geral: *${crT}%* | Hoje: *${t.conv_today} conv*`;
-    return `${header}\n${varText}`;
+    return `🔬 *${t.name}* — CR geral: *${crT}%*\n${top3}`;
   }).join('\n\n');
 
   const fmtBRL = cents => `R$ ${(cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -100,14 +104,16 @@ async function buildReportText(period) {
   const periodLabel = period === 'morning' ? '🌅 Manhã' : '🌙 Noite';
 
   // Build clean structured summary
+  const revHojeStr   = totalRevToday > 0 ? `\n💰 Receita hoje:    *${fmtBRL(totalRevToday)}*` : '';
+  const revTotalStr  = totalRevAll   > 0 ? `\n💎 Receita total:   *${fmtBRL(totalRevAll)}*`  : '';
+
   const summary = [
-    `📈 *Relatório EasyTest — ${periodLabel} ${now}*`,
+    `📈 *Relatório EasyTest*`,
+    `${periodLabel} de ${now}`,
     divider,
-    `👁  Visitas hoje:     *${totalViewsToday}*`,
-    `✅  Conversões:       *${totalConvToday}*`,
-    `📊  Taxa de conv.:    *${crToday}%*`,
-    `💰  Receita hoje:     *${fmtBRL(totalRevToday)}*`,
-    `💎  Receita total:    *${fmtBRL(totalRevAll)}*`,
+    `👁  Visitas hoje:    *${totalViewsToday}*`,
+    `✅  Conversões hoje: *${totalConvToday}*`,
+    `📊  Taxa hoje:       *${crToday}%*` + revHojeStr + revTotalStr,
     divider,
     variationLines,
     divider,
