@@ -1539,20 +1539,26 @@ async function runAiAnalysisPage() {
   }
 }
 
+function periodLabel(v) {
+  if (v === 'yesterday') return 'ontem';
+  var n = parseInt(v);
+  return n === 1 ? 'hoje' : 'últimos ' + n + ' dias';
+}
+
 async function sendAiReportWA() {
-  const days = document.getElementById('ai-days-val');
-  const d = parseInt(days ? days.value : '7');
-  if (!confirm('Enviar relatório de ' + (d === 1 ? 'hoje' : 'últimos ' + d + ' dias') + ' via WhatsApp para todos os números configurados?')) return;
-  const r = await api('/api/whatsapp/send-now', { method: 'POST', body: { period: 'manual', days: d } });
+  var raw = (document.getElementById('ai-days-val') || {}).value || '7';
+  if (!confirm('Enviar relatório de ' + periodLabel(raw) + ' via WhatsApp para todos os números configurados?')) return;
+  var body = raw === 'yesterday' ? { period: 'manual', days: 'yesterday' } : { period: 'manual', days: parseInt(raw) || 7 };
+  var r = await api('/api/whatsapp/send-now', { method: 'POST', body: body });
   if (r.ok) toast('Relatório enviado via WhatsApp!');
   else toast('Erro ao enviar: ' + (r.error || 'falha'), true);
 }
 
 async function sendWaNow() {
-  const days = document.getElementById('rpt-days-val');
-  const d = parseInt(days ? days.value : '1');
-  if (!confirm('Enviar relatório de ' + (d === 1 ? 'hoje' : 'últimos ' + d + ' dias') + ' via WhatsApp?')) return;
-  const r = await api('/api/whatsapp/send-now', { method: 'POST', body: { period: 'manual', days: d } });
+  var raw = (document.getElementById('rpt-days-val') || {}).value || '1';
+  if (!confirm('Enviar relatório de ' + periodLabel(raw) + ' via WhatsApp?')) return;
+  var body = raw === 'yesterday' ? { period: 'manual', days: 'yesterday' } : { period: 'manual', days: parseInt(raw) || 1 };
+  var r = await api('/api/whatsapp/send-now', { method: 'POST', body: body });
   if (r.ok) toast('Relatório enviado!');
   else toast('Erro: ' + (r.error || 'falha'), true);
 }
