@@ -91,17 +91,25 @@ Analise os dados abaixo e entregue um relatório executivo em português brasile
 
 Seja direto, específico e prático. Evite linguagem vaga. Use dados reais dos inputs abaixo.`;
 
-function buildPrompt({ testData, clarityMetrics, clarityPages, scope }) {
+function brtDateStr() {
+  const d  = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yy = d.getUTCFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
+
+function buildPrompt({ testData, clarityMetrics, clarityPages, scope, periodLabel }) {
   // Load custom system prompt from settings (fallback to default)
   const systemPrompt = getSetting('ai_system_prompt') || DEFAULT_SYSTEM_PROMPT;
 
   const abSection = testData ? `
 ## Dados do Teste A/B (EasyTest)
 - Nome: ${testData.name}
-- Total de views: ${testData.total_views}
-- Total de conversões: ${testData.total_conversions}
+- Total de views (período): ${testData.total_views}
+- Total de conversões (período): ${testData.total_conversions}
 - Taxa geral: ${testData.overall_rate}%
-- Receita total: R$ ${((testData.total_revenue || 0) / 100).toFixed(2)}
+- Receita total (período): R$ ${((testData.total_revenue || 0) / 100).toFixed(2)}
 
 Variações:
 ${(testData.variations || []).map(v =>
@@ -122,6 +130,9 @@ ${JSON.stringify(clarityPages, null, 2).slice(0, 2000)}
   return `${systemPrompt}
 
 ---
+**Data atual:** ${brtDateStr()} (horário de Brasília)
+**Período analisado:** ${periodLabel}
+
 ${scope === 'all' ? '## ANÁLISE GERAL — TODAS AS PÁGINAS' : '## ANÁLISE DE PÁGINA ESPECÍFICA'}
 ${abSection}
 ${claritySection}
@@ -153,9 +164,13 @@ router.get('/analyze', async (req, res) => {
     return res.status(503).json({ error: 'GEMINI_API_KEY não configurada nas variáveis de ambiente' });
   }
 
-  const db  = getDb();
-  const { start, end } = parseRange(req.query.range);
-  const fmt = d => d.toISOString().split('T')[0];
+  const db         = getDb();
+  const rangeParam = req.query.range || '7';
+  const { start, end } = parseRange(rangeParam);
+  const fmt        = d => d.toISOString().split('T')[0];
+  const periodLabel = rangeParam === 'yesterday' ? 'Ontem'
+    : rangeParam === '1' ? 'Hoje'
+    : `Últimos ${rangeParam} dias`;
 
   // Aggregate EasyTest data
   const tests = db.prepare(`
@@ -197,7 +212,7 @@ router.get('/analyze', async (req, res) => {
   }
 
   try {
-    const prompt   = buildPrompt({ testData, clarityMetrics, clarityPages, scope: 'all' });
+    const prompt   = buildPrompt({ testData, clarityMetrics, clarityPages, scope: 'all', periodLabel });
     const analysis = await callGemini(prompt);
     logger.info('AI analysis generated', { scope: 'all', tests: tests.length });
     res.json({ ok: true, analysis, generated_at: new Date().toISOString(), has_clarity: !!clarityToken });
@@ -221,20 +236,36 @@ router.get('/analyze/:id', async (req, res) => {
   const test = db.prepare('SELECT * FROM tests WHERE id = ?').get(id);
   if (!test) return res.status(404).json({ error: 'Teste não encontrado' });
 
-  const { start, end } = parseRange(req.query.range);
+  const rangeParam   = req.query.range || '7';
+  const { start, end } = parseRange(rangeParam);
   const fmt = d => d.toISOString().split('T')[0];
+
+  // BRT date filter matching the selected period
+  let dateFilter;
+  if (rangeParam === 'yesterday') {
+    dateFilter = `DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours','-1 day'))`;
+  } else {
+    const days = parseInt(rangeParam) || 7;
+    dateFilter = days === 1
+      ? `DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))`
+      : `datetime(created_at,'-3 hours') >= datetime('now','-3 hours','-${days} days')`;
+  }
+
+  const periodLabel = rangeParam === 'yesterday' ? 'Ontem'
+    : rangeParam === '1' ? 'Hoje'
+    : `Últimos ${rangeParam} dias`;
 
   const NO_BOT = 'AND COALESCE(is_bot,0)=0';
   const vars   = db.prepare('SELECT * FROM variations WHERE test_id = ? ORDER BY id').all(id);
 
-  const totalViews = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id=? ${NO_BOT}`).get(id).c || 0;
-  const totalConv  = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id=? AND type='conversion' ${NO_BOT}`).get(id).c || 0;
-  const totalRev   = db.prepare(`SELECT COALESCE(SUM(revenue_cents),0) AS r FROM interactions WHERE test_id=? AND type='conversion' ${NO_BOT}`).get(id).r || 0;
+  const totalViews = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id=? AND ${dateFilter} ${NO_BOT}`).get(id).c || 0;
+  const totalConv  = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id=? AND type='conversion' AND ${dateFilter} ${NO_BOT}`).get(id).c || 0;
+  const totalRev   = db.prepare(`SELECT COALESCE(SUM(revenue_cents),0) AS r FROM interactions WHERE test_id=? AND type='conversion' AND ${dateFilter} ${NO_BOT}`).get(id).r || 0;
 
   const variations = vars.map(v => {
-    const views = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id=? AND variation_id=? ${NO_BOT}`).get(id, v.id).c || 0;
-    const conv  = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id=? AND variation_id=? AND type='conversion' ${NO_BOT}`).get(id, v.id).c || 0;
-    const rev   = db.prepare(`SELECT COALESCE(SUM(revenue_cents),0) AS r FROM interactions WHERE test_id=? AND variation_id=? AND type='conversion' ${NO_BOT}`).get(id, v.id).r || 0;
+    const views = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id=? AND variation_id=? AND ${dateFilter} ${NO_BOT}`).get(id, v.id).c || 0;
+    const conv  = db.prepare(`SELECT COUNT(*) AS c FROM interactions WHERE test_id=? AND variation_id=? AND type='conversion' AND ${dateFilter} ${NO_BOT}`).get(id, v.id).c || 0;
+    const rev   = db.prepare(`SELECT COALESCE(SUM(revenue_cents),0) AS r FROM interactions WHERE test_id=? AND variation_id=? AND type='conversion' AND ${dateFilter} ${NO_BOT}`).get(id, v.id).r || 0;
     return { name: v.name, views, conversions: conv, conversion_rate: (views > 0 ? (conv / views * 100).toFixed(2) : '0.00'), revenue_cents: rev };
   });
 
@@ -257,7 +288,7 @@ router.get('/analyze/:id', async (req, res) => {
   }
 
   try {
-    const prompt   = buildPrompt({ testData, clarityMetrics, clarityPages: null, scope: 'single' });
+    const prompt   = buildPrompt({ testData, clarityMetrics, clarityPages: null, scope: 'single', periodLabel });
     const analysis = await callGemini(prompt);
     logger.info('AI analysis generated', { scope: 'single', testId: id });
     res.json({ ok: true, analysis, generated_at: new Date().toISOString(), has_clarity: !!clarityToken });
