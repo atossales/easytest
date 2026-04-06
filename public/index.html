@@ -146,6 +146,32 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
 /* Uplift */
 .upl{font-size:11px;font-weight:700;margin-top:4px}
 .upl.up{color:#00A97F}.upl.dn{color:var(--rd)}
+/* ── Dashboard KPI row ── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.kpi{background:var(--w);border:1.5px solid var(--g2);border-radius:var(--r);padding:18px 20px}
+.kpi.kpi-rev{border-color:#00C48C40;background:linear-gradient(135deg,#00C48C0A,var(--w))}
+.kpi-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g5);margin-bottom:6px}
+.kpi-val{font-size:24px;font-weight:900;letter-spacing:-1px;line-height:1;margin-bottom:4px}
+.kpi-val.kpi-green{color:var(--gn)}.kpi-val.kpi-blue{color:var(--b)}
+.kpi-delta{font-size:10px;font-weight:600;color:var(--g5)}
+.kpi-delta.kpi-up{color:var(--gn)}.kpi-delta.kpi-dn{color:var(--rd)}
+/* ── Active test cards ── */
+.tac-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:22px}
+.tac{background:var(--w);border:1.5px solid var(--g2);border-radius:var(--r);padding:18px}
+.tac.tac-win{border-color:#6EE7B760;background:linear-gradient(160deg,#D1FAE508,var(--w))}
+.tac.tac-nodata{opacity:.7;border-style:dashed}
+.tac-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:8px}
+.tac-name{font-weight:800;font-size:13px;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tac-st{font-size:9px;font-weight:800;letter-spacing:.5px;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.ts-win{background:#D1FAE5;color:#065F46}.ts-pend{background:#FEF3C7;color:#92400E}.ts-none{background:var(--g1);color:var(--g5)}
+.tac-vs{display:flex;align-items:center;gap:6px;margin-bottom:14px;padding:12px;background:var(--g0);border-radius:10px}
+.tac-col{flex:1;text-align:center;min-width:0}
+.tac-vn{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--g5);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tac-cr{font-size:22px;font-weight:900;letter-spacing:-1px;line-height:1}
+.tac-cr.win{color:var(--gn)}.tac-arr{font-size:16px;color:var(--g3);flex-shrink:0}
+.tac-sub{font-size:9px;color:var(--g5);margin-top:2px}
+.tac-foot{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--g5);font-weight:600;gap:8px}
+@media(max-width:768px){.kpi-row{grid-template-columns:1fr 1fr}.tac-grid{grid-template-columns:1fr}}
 /* Confidence bar */
 .cb{height:4px;background:var(--g1);border-radius:2px;margin-top:8px;overflow:hidden}
 .cbf{height:100%;border-radius:2px;transition:width .7s ease}
@@ -346,61 +372,160 @@ async function api(u, o) {
 async function rDash() {
   const d = await api('/api/reports?range=30');
   const t = d.totals || {};
+  const tests  = d.tests  || [];
+  const active = tests.filter(function(x) { return x.active; });
+
+  var fmtR = function(c) { return 'R$\u00a0' + ((c||0)/100).toLocaleString('pt-BR',{minimumFractionDigits:2}); };
+
+  // ── KPI Row ─────────────────────────────────────
+  var revToday = t.revenue_today_cents     || 0;
+  var revYest  = t.revenue_yesterday_cents || 0;
+  var revDelta = revYest > 0 ? (((revToday - revYest) / revYest) * 100).toFixed(1) : null;
+  var ticket   = (t.total_conversions > 0 && t.total_revenue_cents > 0)
+    ? t.total_revenue_cents / t.total_conversions : 0;
+
+  var kpiRow = '<div class="kpi-row">' +
+    '<div class="kpi kpi-rev">' +
+      '<div class="kpi-lbl">💰 Receita Hoje</div>' +
+      '<div class="kpi-val kpi-green">' + fmtR(revToday) + '</div>' +
+      (revDelta !== null
+        ? '<div class="kpi-delta ' + (revDelta >= 0 ? 'kpi-up' : 'kpi-dn') + '">' + (revDelta >= 0 ? '▲ +' : '▼ ') + Math.abs(revDelta) + '% vs ontem</div>'
+        : '<div class="kpi-delta">sem dados de ontem</div>') +
+    '</div>' +
+    '<div class="kpi kpi-rev">' +
+      '<div class="kpi-lbl">📅 Receita 30 dias</div>' +
+      '<div class="kpi-val kpi-green">' + fmtR(t.total_revenue_cents) + '</div>' +
+      '<div class="kpi-delta">' + N(t.total_conversions) + ' vendas no período</div>' +
+    '</div>' +
+    '<div class="kpi">' +
+      '<div class="kpi-lbl">🎯 Ticket Médio</div>' +
+      '<div class="kpi-val">' + (ticket > 0 ? fmtR(ticket) : '—') + '</div>' +
+      '<div class="kpi-delta">taxa geral ' + (t.overall_rate || '0.00') + '%</div>' +
+    '</div>' +
+    '<div class="kpi">' +
+      '<div class="kpi-lbl">👁 Visitantes 30d</div>' +
+      '<div class="kpi-val kpi-blue">' + N(t.total_views) + '</div>' +
+      '<div class="kpi-delta">' + (t.active_tests || 0) + ' testes ativos</div>' +
+    '</div>' +
+  '</div>';
+
+  // ── Test insight cards ───────────────────────────
+  function buildTestCard(test) {
+    var ctrl  = test.ctrl;
+    var best  = test.best_variation;
+    var hasData = test.views > 0;
+    var isWin   = best && best.significance && best.significance.confident95 && (best.significance.uplift||0) > 0;
+    var isPend  = hasData && !isWin;
+
+    // Estimated monthly gain: uplift * current conversions * ticket, extrapolated to 30d
+    var gainStr = '';
+    if (isWin && best.significance.uplift && ticket > 0 && ctrl && ctrl.views > 0) {
+      var ctrlCR   = ctrl.conversions / ctrl.views;
+      var extraConvPerVisit = (best.significance.uplift / 100) * ctrlCR;
+      var gain30d  = Math.round(extraConvPerVisit * test.views * (ticket / 100));
+      if (gain30d > 0) gainStr = '<div style="font-size:11px;color:#00A97F;font-weight:700;margin-top:4px">+ ' + fmtR(gain30d * 100) + ' extras estimados/mês 🚀</div>';
+    }
+
+    var stLabel, stClass, cardBorder, cardBg;
+    if (!hasData) {
+      stLabel = 'SEM DADOS'; stClass = 'ts-none';
+      cardBorder = 'var(--g2)'; cardBg = 'var(--w)';
+    } else if (isWin) {
+      stLabel = '🏆 VENCEDOR ENCONTRADO'; stClass = 'ts-win';
+      cardBorder = '#6EE7B760'; cardBg = 'linear-gradient(160deg,#D1FAE510,var(--w))';
+    } else {
+      stLabel = '⏳ COLETANDO DADOS'; stClass = 'ts-pend';
+      cardBorder = '#FDE68A80'; cardBg = 'var(--w)';
+    }
+
+    var ctrlCR   = ctrl ? ctrl.conversion_rate + '%' : '—';
+    var ctrlViews= ctrl ? N(ctrl.views) + ' vis' : '';
+    var ctrlName = ctrl ? (ctrl.name.length > 18 ? ctrl.name.slice(0,16)+'…' : ctrl.name) : 'Original';
+    var bestCR   = best ? best.conversion_rate + '%' : (hasData ? test.conversion_rate + '%' : '—');
+    var bestSub  = best ? N(best.views) + ' vis' : '';
+    var uplift   = (best && best.significance && best.significance.uplift)
+      ? ' <span style="color:#00A97F;font-size:10px;font-weight:800">▲+' + best.significance.uplift.toFixed(1) + '%</span>' : '';
+    var bestName = best ? (best.name.length > 18 ? best.name.slice(0,16)+'…' : best.name) : 'Variações';
+    var revBadge = test.revenue_cents > 0
+      ? '<span style="font-size:11px;color:var(--gn);font-weight:700">' + fmtR(test.revenue_cents) + '</span>' : '';
+
+    var noDataMsg = !hasData
+      ? '<div style="padding:16px 0;text-align:center;color:var(--g4);font-size:12px">Aguardando primeiras visitas…</div>' : '';
+
+    return '<div style="background:' + cardBg + ';border:1.5px solid ' + cardBorder + ';border-radius:var(--r);padding:18px">' +
+      '<div class="tac-head">' +
+        '<div class="tac-name">' + esc(test.name) + '</div>' +
+        '<span class="tac-st ' + stClass + '">' + stLabel + '</span>' +
+      '</div>' +
+      (noDataMsg || (
+        '<div class="tac-vs">' +
+          '<div class="tac-col">' +
+            '<div class="tac-vn">Original</div>' +
+            '<div class="tac-cr">' + ctrlCR + '</div>' +
+            '<div class="tac-sub">' + ctrlViews + '</div>' +
+          '</div>' +
+          '<div class="tac-arr">→</div>' +
+          '<div class="tac-col">' +
+            '<div class="tac-vn">' + esc(bestName) + '</div>' +
+            '<div class="tac-cr' + (isWin?' win':'') + '">' + bestCR + uplift + '</div>' +
+            '<div class="tac-sub">' + bestSub + '</div>' +
+          '</div>' +
+        '</div>' +
+        gainStr
+      )) +
+      '<div class="tac-foot" style="margin-top:' + (noDataMsg?'0':'12px') + '">' +
+        '<span>' + revBadge + '</span>' +
+        '<button class="btn bsm bs" onclick="go(\'report\',' + test.id + ')">Ver detalhes →</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  var tacSection = active.length
+    ? '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--g5);margin-bottom:12px">Testes em andamento</div>' +
+      '<div class="tac-grid">' + active.map(buildTestCard).join('') + '</div>'
+    : '<div class="card" style="text-align:center;padding:40px 20px;margin-bottom:20px">' +
+      '<div style="font-size:32px;margin-bottom:12px">🧪</div>' +
+      '<div style="font-weight:800;font-size:15px;margin-bottom:6px">Nenhum teste ativo</div>' +
+      '<div style="font-size:12px;color:var(--g5);margin-bottom:18px">Crie seu primeiro teste A/B e descubra qual versão da sua página converte mais.</div>' +
+      '<button class="btn bp" onclick="go(\'new\')">+ Criar primeiro teste</button></div>';
+
+  // ── Performance table ────────────────────────────
+  var perfRows = tests.map(function(x) {
+    var crColor = x.conversion_rate >= 3 ? 'var(--gn)' : x.conversion_rate >= 1 ? 'var(--bk)' : 'var(--rd)';
+    var badge   = x.active
+      ? '<span class="badge b-on">Ativo</span>'
+      : '<span class="badge" style="background:var(--g1);color:var(--g5)">Pausado</span>';
+    return '<tr>' +
+      '<td class="tn">' + esc(x.name) + '</td>' +
+      '<td>' + N(x.views) + '</td>' +
+      '<td>' + N(x.conversions) + '</td>' +
+      '<td><span style="color:' + crColor + ';font-weight:900">' + x.conversion_rate + '%</span></td>' +
+      '<td>' + (x.revenue_cents > 0 ? fmtR(x.revenue_cents) : '—') + '</td>' +
+      '<td>' + badge + '</td>' +
+      '<td><button class="btn bsm bs" onclick="go(\'report\',' + x.id + ')">→</button></td>' +
+    '</tr>';
+  }).join('');
+
+  var perfTable = tests.length ? '<div class="card" style="margin-bottom:0">' +
+    '<h3 style="margin-bottom:14px">📊 Todos os testes — últimos 30 dias</h3>' +
+    '<div style="overflow-x:auto"><table><thead><tr>' +
+    '<th>Teste</th><th>Visitantes</th><th>Conversões</th><th>Taxa CR</th><th>Receita</th><th>Status</th><th></th>' +
+    '</tr></thead><tbody>' + perfRows + '</tbody></table></div></div>' : '';
+
+  // ── Header ───────────────────────────────────────
+  var icnRefresh = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>';
+  var icnPlus    = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+
   document.getElementById('m').innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">' +
-    '<div><h1 style="font-weight:900;font-size:22px;letter-spacing:-.5px">Dashboard</h1><div style="font-size:12px;color:var(--g5);font-weight:500;margin-top:2px">Últimos 30 dias</div></div>' +
-    '<div style="display:flex;align-items:center;gap:8px">' +
-    '<button class="btn bs" onclick="rDash()">' +
-    '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' +
-    'Atualizar</button>' +
-    '<button class="btn bp" onclick="go(\'new\')">' +
-    '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
-    'Novo Teste</button>' +
-    '</div></div>' +
-    '<div class="sg">' +
-    '<div class="sc"><div class="sl">Testes Ativos</div><div class="sv blue">' + (t.active_tests || 0) + '</div></div>' +
-    '<div class="sc"><div class="sl">Visitantes</div><div class="sv">' + N(t.total_views) + '</div></div>' +
-    '<div class="sc"><div class="sl">Conversões</div><div class="sv green">' + N(t.total_conversions) + '</div></div>' +
-    '<div class="sc"><div class="sl">Taxa Geral</div><div class="sv blue">' + (t.overall_rate || '0.00') + '%</div></div>' +
+      '<div><h1 style="font-weight:900;font-size:22px;letter-spacing:-.5px">Dashboard</h1>' +
+      '<div style="font-size:12px;color:var(--g5);font-weight:500;margin-top:2px">Visão geral — últimos 30 dias</div></div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="btn bs" onclick="rDash()">' + icnRefresh + 'Atualizar</button>' +
+        '<button class="btn bp" onclick="go(\'new\')">' + icnPlus + 'Novo Teste</button>' +
+      '</div>' +
     '</div>' +
-    (function() {
-      var rev = t.total_revenue_cents || 0;
-      var ticket = (t.total_conversions > 0 && rev > 0) ? (rev / t.total_conversions / 100) : 0;
-      var fmtRev = 'R$ ' + (rev/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
-      var fmtTicket = ticket > 0 ? 'Ticket médio: R$ ' + ticket.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-      return '<div style="background:linear-gradient(135deg,#00C48C18,#00C48C08);border:1.5px solid #00C48C40;border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">' +
-        '<div><div style="font-size:11px;font-weight:700;color:#00C48C;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">💰 Receita Total (30 dias)</div>' +
-        '<div style="font-size:28px;font-weight:900;color:#00C48C;letter-spacing:-1px">' + fmtRev + '</div>' +
-        (fmtTicket ? '<div style="font-size:11px;color:var(--g5);margin-top:3px">' + fmtTicket + '</div>' : '') + '</div>' +
-        '<div style="text-align:right"><div style="font-size:11px;color:var(--g5);margin-bottom:4px">Últ. 30 dias</div>' +
-        '<div style="font-size:13px;font-weight:700;color:var(--g4)">' + N(t.total_conversions) + ' vendas</div></div></div>';
-    })() +
-    '<div class="grid-2">' +
-    '<div class="card"><h3>🏆 Ranking por Conversão</h3>' +
-    (d.ranking && d.ranking.length
-      ? d.ranking.map(function(r, i) {
-          var revStr = r.total_revenue_cents > 0 ? ' · R$ ' + (r.total_revenue_cents/100).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-          return '<div class="ri"><div class="rp ' + (i===0?'g':i===1?'s':'br') + '">' + (i+1) + '</div>' +
-            '<div style="flex:1"><div class="rn">' + esc(r.name) + '</div><div class="rt">' + N(r.views) + ' vis · ' + N(r.conversions) + ' conv' + revStr + '</div></div>' +
-            '<div class="rr">' + r.conversion_rate + '%</div></div>';
-        }).join('')
-      : '<div style="padding:20px;text-align:center;color:var(--g3);font-size:12px">Sem dados ainda</div>') +
-    '</div>' +
-    '<div class="card"><h3>📊 Funil de Conversão</h3>' +
-    (function() {
-      const ts = (d.tests || []).filter(function(x) { return x.views > 0; });
-      if (!ts.length) return '<div style="padding:30px;text-align:center;color:var(--g3);font-size:12px">Crie um teste para ver o funil</div>';
-      const mx = Math.max.apply(null, ts.map(function(x) { return x.views; }).concat([1]));
-      return ts.slice(0, 6).map(function(x) {
-        return '<div style="position:relative;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">' +
-          '<div style="position:absolute;left:0;top:0;bottom:0;width:' + Math.max(10,(x.views/mx)*100) + '%;background:var(--b);opacity:.08;border-radius:var(--s)"></div>' +
-          '<div style="position:relative;z-index:1"><div style="font-weight:700;font-size:12.5px">' + esc(x.name) + '</div></div>' +
-          '<div style="position:relative;z-index:1;text-align:right">' +
-          '<div style="font-weight:900;font-size:18px;color:var(--b)">' + x.conversion_rate + '%</div>' +
-          '<div style="font-size:10px;color:var(--g5)">' + N(x.views) + ' → ' + N(x.conversions) + '</div></div></div>';
-      }).join('');
-    })() +
-    '</div></div>';
+    kpiRow + tacSection + perfTable;
 }
 
 // ══════════════════════════════════════════════════

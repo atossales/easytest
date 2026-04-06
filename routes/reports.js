@@ -33,11 +33,32 @@ router.get('/', (req, res) => {
   const df   = dateFilter(req.query.range || '30', 'i.created_at', req.query.start, req.query.end);
   const tests = db.prepare('SELECT * FROM tests ORDER BY created_at DESC').all();
 
+  // BRT today/yesterday for delta KPIs
+  const todayStr     = new Date(Date.now() - 3*60*60*1000).toISOString().split('T')[0];
+  const yesterdayStr = new Date(Date.now() - 3*60*60*1000 - 86400000).toISOString().split('T')[0];
+  const dfToday = `AND DATE(datetime(created_at,'-3 hours'))='${todayStr}' ${NO_BOT}`;
+  const dfYest  = `AND DATE(datetime(created_at,'-3 hours'))='${yesterdayStr}' ${NO_BOT}`;
+  const revToday = db.prepare(`SELECT COALESCE(SUM(revenue_cents),0) AS r FROM interactions WHERE type='conversion' ${dfToday}`).get().r || 0;
+  const revYest  = db.prepare(`SELECT COALESCE(SUM(revenue_cents),0) AS r FROM interactions WHERE type='conversion' ${dfYest}`).get().r || 0;
+
   const overview = tests.map(t => {
     const views       = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id = ? ${df} ${NO_BOT}`).get(t.id).c || 0;
     const conversions = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id = ? AND i.type = 'conversion' ${df} ${NO_BOT}`).get(t.id).c || 0;
     const revenue     = db.prepare(`SELECT COALESCE(SUM(i.revenue_cents),0) AS r FROM interactions i WHERE i.test_id = ? AND i.type = 'conversion' ${df} ${NO_BOT}`).get(t.id).r || 0;
-    return { ...t, views, conversions, conversion_rate: +(views > 0 ? (conversions / views * 100).toFixed(2) : 0), revenue_cents: revenue };
+
+    // Variation breakdown for dashboard cards (ctrl + best_variation)
+    const vars = db.prepare('SELECT * FROM variations WHERE test_id = ? AND COALESCE(active,1)=1 ORDER BY id').all(t.id);
+    const varStats = vars.map(v => {
+      const vv = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id=? AND i.variation_id=? ${df} ${NO_BOT}`).get(t.id, v.id).c || 0;
+      const vc = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id=? AND i.variation_id=? AND i.type='conversion' ${df} ${NO_BOT}`).get(t.id, v.id).c || 0;
+      return { ...v, views: vv, conversions: vc, conversion_rate: +(vv > 0 ? (vc/vv*100).toFixed(2) : 0) };
+    });
+    const enriched    = analyzeVariations(varStats);
+    const ctrl        = enriched.find(v => v.isControl) || enriched[0] || null;
+    const bestVar     = [...enriched].filter(v => !v.isControl && v.views > 0)
+      .sort((a, b) => b.conversion_rate - a.conversion_rate)[0] || null;
+
+    return { ...t, views, conversions, conversion_rate: +(views > 0 ? (conversions / views * 100).toFixed(2) : 0), revenue_cents: revenue, ctrl, best_variation: bestVar };
   });
 
   const ranking = [...overview].filter(t => t.views > 0).sort((a, b) => b.conversion_rate - a.conversion_rate).map(t => ({
@@ -51,12 +72,14 @@ router.get('/', (req, res) => {
     tests: overview,
     ranking,
     totals: {
-      total_tests:         tests.length,
-      active_tests:        tests.filter(t => t.active).length,
-      total_views:         tv,
-      total_conversions:   tc,
-      overall_rate:        tv > 0 ? (tc / tv * 100).toFixed(2) : '0.00',
-      total_revenue_cents: tr,
+      total_tests:              tests.length,
+      active_tests:             tests.filter(t => t.active).length,
+      total_views:              tv,
+      total_conversions:        tc,
+      overall_rate:             tv > 0 ? (tc / tv * 100).toFixed(2) : '0.00',
+      total_revenue_cents:      tr,
+      revenue_today_cents:      revToday,
+      revenue_yesterday_cents:  revYest,
     },
   });
 });
