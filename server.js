@@ -628,7 +628,9 @@ app.get('/embed.js', (req, res) => {
   }
 
   // Send cid in body as fallback when cross-origin cookie is blocked
-  post("/api/track/conversion",{page_url:location.href,cid:cid||undefined},function(r){
+  // Revenue: set window.__cp_revenue = 297.00 (in BRL) on the thank-you page before this script runs
+  var revCents=Math.round((window.__cp_revenue||0)*100)||0;
+  post("/api/track/conversion",{page_url:location.href,cid:cid||undefined,revenue_cents:revCents||undefined},function(r){
     if(r&&r.converted>0){
       if(typeof gtag==="function")gtag("event","ab_test_conversion",{conversions:r.converted});
       if(typeof fbq==="function"){fbq("track","Purchase");fbq("trackCustom","ABTestConversion",{conversions:r.converted});}

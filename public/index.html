@@ -777,7 +777,7 @@ function buildVarCard(v, i, testId, ctrl) {
   const sig = v.significance;
 
   let sigBadge;
-  if (isCtrl) sigBadge = '<span class="sig sig-ctrl">CONTROLE</span>';
+  if (isCtrl) sigBadge = '<span class="sig sig-ctrl">ORIGINAL</span>';
   else if (sig && sig.confident99) sigBadge = '<span class="sig sig-win99">✓ 99% CONF</span>';
   else if (sig && sig.confident95) sigBadge = '<span class="sig sig-win">✓ 95% CONF</span>';
   else if (v.views > 0) sigBadge = '<span class="sig sig-pend">EM ANDAMENTO</span>';
@@ -831,7 +831,7 @@ function buildVarCard(v, i, testId, ctrl) {
     '<div class="vcs">' +
     '<div><div class="vcsi">VIEWS</div><div class="vcv">' + N(v.views) + '</div></div>' +
     '<div><div class="vcsi">CONV</div><div class="vcv">' + N(v.conversions) + '</div></div>' +
-    '<div><div class="vcsi">RECEITA</div><div class="vcv" style="font-size:11px;color:var(--gn)">' + revStr + '</div>' + (ticketStr ? '<div style="font-size:9px;color:var(--g5)">ticket: ' + ticketStr + '</div>' : '') + '</div>' +
+    '<div><div class="vcsi">RECEITA</div><div class="vcv" style="font-size:14px;font-weight:900;color:var(--gn)">' + revStr + '</div>' + (ticketStr ? '<div style="font-size:10px;color:var(--g5)">ticket: ' + ticketStr + '</div>' : '') + '</div>' +
     '</div>' + previewLink + toggleBtn + '</div>';
 }
 
@@ -842,7 +842,7 @@ function buildBanner(bestSig, summary) {
     const conf = sig.confident99 ? '99%' : '95%';
     const upliftStr = sig.uplift !== null ? ' e <strong>+' + sig.uplift.toFixed(1) + '% de uplift</strong>' : '';
     return '<div class="wb win"><div class="wi">🏆</div>' +
-      '<div class="wt"><strong>' + esc(bestSig.name) + '</strong> está convertendo mais' + upliftStr + ' do que a variação A, com resultado confirmado (' + conf + ').</div></div>';
+      '<div class="wt"><strong>' + esc(bestSig.name) + '</strong> está convertendo mais' + upliftStr + ' do que a original, com resultado confirmado (' + conf + ').</div></div>';
   }
   const need = summary.sample_needed;
   const views = summary.total_views || 0;
