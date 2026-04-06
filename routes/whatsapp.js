@@ -63,6 +63,24 @@ router.post('/send-now', express.json(), async (req, res) => {
   }
 });
 
+// POST /api/whatsapp/send-text — send arbitrary text to all configured numbers
+// Body: { text: string }
+router.post('/send-text', express.json(), async (req, res) => {
+  const { text } = req.body || {};
+  if (!text || typeof text !== 'string') return res.status(400).json({ error: 'text é obrigatório' });
+
+  const nums = [getSetting('wa_number_1'), getSetting('wa_number_2')].filter(Boolean);
+  if (!nums.length) return res.status(400).json({ error: 'Nenhum número configurado' });
+
+  const results = [];
+  for (const num of nums) {
+    const r = await sendMessage(num, text);
+    results.push({ num: num.slice(0, 4) + '****', ok: r.ok });
+    logger.info('send-text dispatched', { num: num.slice(0, 4) + '****', ok: r.ok });
+  }
+  res.json({ ok: true, results });
+});
+
 // GET /api/whatsapp/preview — preview the report message text
 // Query: ?period=morning&days=7
 router.get('/preview', async (req, res) => {

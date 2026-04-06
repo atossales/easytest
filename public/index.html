@@ -1515,6 +1515,8 @@ function selectRptDays(v) {
   document.getElementById('rpt-days-' + v).classList.add('dr-active');
 }
 
+var _lastAiAnalysisText = null;
+
 async function runAiAnalysisPage() {
   const sel  = document.getElementById('ai-test-sel');
   const days = document.getElementById('ai-days-val');
@@ -1522,11 +1524,13 @@ async function runAiAnalysisPage() {
   const waBtn = document.getElementById('ai-wa-btn');
   if (!sel || !out) return;
   const testId = sel.value, range = days ? days.value : '7';
+  _lastAiAnalysisText = null;
   if (waBtn) waBtn.style.display = 'none';
   out.innerHTML = '<div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Analisando com Gemini Flash...</span></div>';
   try {
     const d = await api('/api/ai/analyze/' + testId + '?range=' + range);
     if (d.error) { out.innerHTML = '<div style="color:#FF6B6B;font-size:12px">⚠️ ' + esc(d.error) + '</div>'; return; }
+    _lastAiAnalysisText = d.analysis;
     const html = d.analysis
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/^(#{1,3} .+)$/gm, '<strong style="font-size:13px;color:#fff;display:block;margin-top:12px;margin-bottom:4px">$1</strong>')
@@ -1546,11 +1550,10 @@ function periodLabel(v) {
 }
 
 async function sendAiReportWA() {
-  var raw = (document.getElementById('ai-days-val') || {}).value || '7';
-  if (!confirm('Enviar relatório de ' + periodLabel(raw) + ' via WhatsApp para todos os números configurados?')) return;
-  var body = raw === 'yesterday' ? { period: 'manual', days: 'yesterday' } : { period: 'manual', days: parseInt(raw) || 7 };
-  var r = await api('/api/whatsapp/send-now', { method: 'POST', body: body });
-  if (r.ok) toast('Relatório enviado via WhatsApp!');
+  if (!_lastAiAnalysisText) { toast('Gere a análise primeiro antes de enviar.', true); return; }
+  if (!confirm('Enviar a análise IA via WhatsApp para todos os números configurados?')) return;
+  var r = await api('/api/whatsapp/send-text', { method: 'POST', body: { text: _lastAiAnalysisText } });
+  if (r.ok) toast('Análise enviada via WhatsApp!');
   else toast('Erro ao enviar: ' + (r.error || 'falha'), true);
 }
 
