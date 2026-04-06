@@ -255,6 +255,38 @@ router.delete('/:id', (req, res) => {
 });
 
 // DELETE /api/tests/:id/variations/:vid
+// GET /api/tests/:id/variations/:vid/html-content — returns raw HTML for editor
+router.get('/:id/variations/:vid/html-content', (req, res) => {
+  const db = getDb();
+  const v  = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(req.params.vid, req.params.id);
+  if (!v) return res.status(404).json({ error: 'Variação não encontrada' });
+  if (!v.file_path) return res.status(404).json({ error: 'Esta variação não possui arquivo HTML' });
+  const fp = path.resolve(UPLOADS, path.basename(v.file_path));
+  if (!fp.startsWith(UPLOADS) || !fs.existsSync(fp)) return res.status(404).json({ error: 'Arquivo não encontrado' });
+  const html = fs.readFileSync(fp, 'utf8');
+  res.json({ ok: true, html, name: v.name, variation_id: v.id });
+});
+
+// PUT /api/tests/:id/variations/:vid/html-content — saves edited HTML
+router.put('/:id/variations/:vid/html-content', express.json({ limit: '10mb' }), (req, res) => {
+  const db = getDb();
+  const v  = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(req.params.vid, req.params.id);
+  if (!v) return res.status(404).json({ error: 'Variação não encontrada' });
+  if (!v.file_path) return res.status(400).json({ error: 'Esta variação não possui arquivo HTML para editar' });
+  const fp = path.resolve(UPLOADS, path.basename(v.file_path));
+  if (!fp.startsWith(UPLOADS)) return res.status(403).json({ error: 'Acesso negado' });
+  const { html } = req.body;
+  if (!html || typeof html !== 'string') return res.status(400).json({ error: 'HTML inválido' });
+  try {
+    fs.writeFileSync(fp, html, 'utf8');
+    logger.info('Variation HTML saved via editor', { testId: req.params.id, varId: req.params.vid });
+    res.json({ ok: true });
+  } catch (e) {
+    logger.error('Failed to save variation HTML', { error: e.message });
+    res.status(500).json({ error: 'Falha ao salvar arquivo' });
+  }
+});
+
 router.delete('/:id/variations/:vid', (req, res) => {
   const db = getDb();
   const v  = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(req.params.vid, req.params.id);

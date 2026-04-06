@@ -6,6 +6,9 @@
 <title>EasyTest</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/grapesjs@0.21.13/dist/css/grapes.min.css">
+<script src="https://unpkg.com/grapesjs@0.21.13/dist/grapes.min.js"></script>
+<script src="https://unpkg.com/grapesjs-preset-webpage@1.0.2/dist/index.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--b:#0065FF;--bd:#0050CC;--bl:#E8F0FF;--bk:#0A0A0A;--g7:#404040;--g5:#6B6B6B;--g3:#B0B0B0;--g2:#D4D4D4;--g1:#F0F0F0;--g0:#F8F8F8;--w:#FFF;--gn:#00C48C;--gl:#E6FAF3;--rd:#FF4D4D;--rl:#FFECEC;--or:#FFB84D;--pu:#A855F7;--r:12px;--s:8px}
@@ -252,9 +255,40 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
   .mob-nav a svg{width:20px;height:20px}
   .mn{padding-bottom:72px}
 }
+/* ── Visual Editor (GrapesJS) ── */
+#editor-overlay{display:none;position:fixed;inset:0;background:#1a1a2e;z-index:9999;flex-direction:column}
+#editor-overlay.open{display:flex}
+#editor-topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#0f0f1a;border-bottom:1px solid #2a2a4a;flex-shrink:0}
+#editor-topbar .et-title{font-size:13px;font-weight:800;color:#fff;margin-right:auto}
+#editor-topbar .et-sub{font-size:11px;color:#888;margin-left:4px;font-weight:400}
+#editor-topbar .et-btn{padding:7px 16px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit}
+#editor-topbar .et-save{background:#00C48C;color:#fff}
+#editor-topbar .et-save:hover{background:#00a97a}
+#editor-topbar .et-discard{background:#2a2a4a;color:#aaa}
+#editor-topbar .et-discard:hover{background:#3a3a5a;color:#fff}
+#editor-topbar .et-saving{background:#555;color:#fff;cursor:default}
+#editor-wrap{flex:1;overflow:hidden}
+#gjs{height:100%}
+/* Override GrapesJS dark theme to match our brand */
+.gjs-one-bg{background:#1a1a2e}
+.gjs-two-bg{background:#0f0f1a}
+.gjs-three-bg{background:#2a2a4a}
+.gjs-four-color{color:#00C48C}
+.gjs-four-color-h:hover{color:#00C48C}
 </style>
 </head>
 <body>
+
+<!-- ── Visual Editor Overlay ── -->
+<div id="editor-overlay">
+  <div id="editor-topbar">
+    <span id="editor-title" class="et-title">Editor Visual<span class="et-sub"></span></span>
+    <button class="et-btn et-discard" onclick="closeEditor()">✕ Sair sem salvar</button>
+    <button class="et-btn et-save" id="editor-save-btn" onclick="saveEditor()">💾 Salvar alterações</button>
+  </div>
+  <div id="editor-wrap"><div id="gjs"></div></div>
+</div>
+
 <div class="app">
 
 <aside class="sb">
@@ -986,6 +1020,10 @@ function buildVarCard(v, i, testId, ctrl, crowned) {
     ? '<a href="/p/' + testId + '/' + v.id + '" target="_blank" style="font-size:9px;color:var(--b);font-weight:700;text-decoration:none;margin-top:6px;display:inline-block">↗ Preview</a>'
     : '';
 
+  const editBtn = v.file_path && testId
+    ? '<button class="btn bs bsm" style="margin-top:6px;width:100%;font-size:11px;font-weight:800" onclick="event.stopPropagation();openEditor(' + testId + ',' + v.id + ',\'' + esc(v.name).replace(/'/g,"\\'") + '\')">✏️ Editar visualmente</button>'
+    : '';
+
   const isActive   = v.active !== 0;
   const toggleBtn  = testId
     ? '<div class="var-sw" onclick="toggleVariation(' + testId + ',' + v.id + ',' + (isActive ? 'false' : 'true') + ',event)" title="' + (isActive ? 'Pausar' : 'Ativar') + ' variação">' +
@@ -1020,7 +1058,7 @@ function buildVarCard(v, i, testId, ctrl, crowned) {
     '<div><div class="vcsi">VIEWS</div><div class="vcv">' + N(v.views) + '</div></div>' +
     '<div><div class="vcsi">CONV</div><div class="vcv">' + N(v.conversions) + '</div></div>' +
     '<div><div class="vcsi">RECEITA</div><div class="vcv" style="font-size:14px;font-weight:900;color:var(--gn)">' + revStr + '</div>' + (ticketStr ? '<div style="font-size:10px;color:var(--g5)">ticket: ' + ticketStr + '</div>' : '') + '</div>' +
-    '</div>' + previewLink + toggleBtn + '</div>';
+    '</div>' + previewLink + editBtn + toggleBtn + '</div>';
 }
 
 // ── Winner / progress banner ──────────────────────
@@ -1832,6 +1870,125 @@ async function rMessages() {
     '<div id="wa-preview" style="margin-top:12px"></div>' +
     '</div>' +
     '</div>';
+}
+
+// ══════════════════════════════════════════════════
+//  VISUAL EDITOR (GrapesJS)
+// ══════════════════════════════════════════════════
+var _editorInstance = null;
+var _editorTestId   = null;
+var _editorVarId    = null;
+
+async function openEditor(testId, varId, varName) {
+  _editorTestId = testId;
+  _editorVarId  = varId;
+
+  // Show overlay with loading state
+  var overlay = document.getElementById('editor-overlay');
+  document.getElementById('editor-title').innerHTML =
+    'Editor Visual <span class="et-sub">— ' + esc(varName || 'Variação') + '</span>';
+  document.getElementById('editor-save-btn').textContent = '💾 Salvar alterações';
+  document.getElementById('editor-save-btn').className = 'et-btn et-save';
+  overlay.classList.add('open');
+  document.getElementById('gjs').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:14px">Carregando editor...</div>';
+
+  // Fetch HTML
+  var data;
+  try {
+    data = await api('/api/tests/' + testId + '/variations/' + varId + '/html-content');
+  } catch (e) {
+    toast('Erro ao carregar HTML: ' + e.message, true);
+    overlay.classList.remove('open');
+    return;
+  }
+
+  // Destroy previous instance
+  if (_editorInstance) { try { _editorInstance.destroy(); } catch(_) {} _editorInstance = null; }
+  document.getElementById('gjs').innerHTML = '';
+
+  // Init GrapesJS
+  _editorInstance = grapesjs.init({
+    container: '#gjs',
+    height: '100%',
+    fromElement: false,
+    storageManager: false,
+    plugins: [grapesjsPresetWebpage],
+    pluginsOpts: { [grapesjsPresetWebpage]: {} },
+    panels: { defaults: [] }, // hide default panels, we use our topbar
+    deviceManager: {
+      devices: [
+        { name: 'Desktop', width: '' },
+        { name: 'Tablet',  width: '768px', widthMedia: '768px' },
+        { name: 'Mobile',  width: '375px', widthMedia: '480px' },
+      ],
+    },
+    styleManager: {
+      sectors: [
+        { name: 'Texto', open: true, buildProps: ['font-family','font-size','font-weight','color','text-align','line-height','letter-spacing'] },
+        { name: 'Fundo', open: false, buildProps: ['background-color','background'] },
+        { name: 'Espaçamento', open: false, buildProps: ['padding','margin'] },
+        { name: 'Borda', open: false, buildProps: ['border','border-radius'] },
+        { name: 'Tamanho', open: false, buildProps: ['width','max-width','height','display'] },
+      ],
+    },
+  });
+
+  // Load HTML
+  _editorInstance.setComponents(data.html);
+
+  // Add device buttons to our topbar
+  var topbar = document.getElementById('editor-topbar');
+  if (!document.getElementById('editor-devices')) {
+    var devBtns = document.createElement('div');
+    devBtns.id = 'editor-devices';
+    devBtns.style.cssText = 'display:flex;gap:4px;margin-right:8px';
+    devBtns.innerHTML =
+      '<button class="et-btn et-discard" style="padding:6px 10px;font-size:11px" onclick="editorDevice(\'Desktop\')" title="Desktop">🖥</button>' +
+      '<button class="et-btn et-discard" style="padding:6px 10px;font-size:11px" onclick="editorDevice(\'Tablet\')" title="Tablet">📱</button>' +
+      '<button class="et-btn et-discard" style="padding:6px 10px;font-size:11px" onclick="editorDevice(\'Mobile\')" title="Mobile">📲</button>';
+    topbar.insertBefore(devBtns, document.getElementById('editor-save-btn').previousSibling);
+  }
+}
+
+function editorDevice(name) {
+  if (_editorInstance) _editorInstance.setDevice(name);
+}
+
+function closeEditor() {
+  if (_editorInstance) { try { _editorInstance.destroy(); } catch(_) {} _editorInstance = null; }
+  document.getElementById('editor-overlay').classList.remove('open');
+  var dev = document.getElementById('editor-devices');
+  if (dev) dev.remove();
+}
+
+async function saveEditor() {
+  if (!_editorInstance) return;
+  var btn = document.getElementById('editor-save-btn');
+  btn.textContent = '⏳ Salvando...';
+  btn.className = 'et-btn et-saving';
+
+  var html = _editorInstance.getHtml();
+  var css  = _editorInstance.getCss();
+  // Inject GrapesJS CSS into the <head> so styles persist
+  var full = html.replace('</head>', '<style>' + css + '</style>\n</head>');
+  if (!full.includes('</head>')) full = '<style>' + css + '</style>\n' + html;
+
+  try {
+    await api('/api/tests/' + _editorTestId + '/variations/' + _editorVarId + '/html-content', {
+      method: 'PUT',
+      body: { html: full },
+    });
+    btn.textContent = '✅ Salvo!';
+    btn.className = 'et-btn et-save';
+    toast('Variação salva com sucesso!');
+    setTimeout(function() {
+      btn.textContent = '💾 Salvar alterações';
+    }, 2000);
+  } catch (e) {
+    btn.textContent = '💾 Salvar alterações';
+    btn.className = 'et-btn et-save';
+    toast('Erro ao salvar: ' + e.message, true);
+  }
 }
 
 // ══════════════════════════════════════════════════
