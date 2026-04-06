@@ -2020,10 +2020,10 @@ async function openEditor(testId, varId, varName) {
     height: '100%',
     fromElement: false,
     storageManager: false,
-    components: bodyHtml,
-    // protectedCss: GrapesJS renders this CSS but never modifies or removes it
-    // This keeps the original page styles intact
-    protectedCss: inlineStyles,
+    // Start with empty canvas — we inject HTML directly into the iframe on 'load'
+    // to bypass the GrapesJS component parser which drops complex HTML sections
+    components: '',
+    protectedCss: '',
     canvas: {
       styles: extCss,  // external stylesheets loaded inside the iframe (absolute URLs)
       scripts: [],
@@ -2093,6 +2093,52 @@ async function openEditor(testId, varId, varName) {
     },
   });
 
+  // Inject full HTML directly into the canvas iframe after GrapesJS loads
+  // This bypasses the component parser which drops complex nested HTML
+  _editorInstance.on('load', function() {
+    try {
+      var iframeDoc = _editorInstance.Canvas.getDocument();
+      if (!iframeDoc) return;
+
+      // Inject inline styles + external CSS links into <head>
+      var headEl = iframeDoc.head;
+      // Add inline styles as a <style> tag
+      if (inlineStyles.trim()) {
+        var styleTag = iframeDoc.createElement('style');
+        styleTag.textContent = inlineStyles;
+        headEl.appendChild(styleTag);
+      }
+      // External CSS links are already in canvas.styles but add them too for reliability
+      extCss.forEach(function(href) {
+        // avoid duplicates
+        if (!iframeDoc.querySelector('link[href="' + href + '"]')) {
+          var link = iframeDoc.createElement('link');
+          link.rel = 'stylesheet'; link.href = href;
+          headEl.appendChild(link);
+        }
+      });
+
+      // Force background color
+      if (forcedBgCss) {
+        var bgStyle = iframeDoc.createElement('style');
+        bgStyle.textContent = forcedBgCss;
+        headEl.appendChild(bgStyle);
+      }
+
+      // Inject body content directly — no parser, no drops
+      iframeDoc.body.innerHTML = bodyHtml;
+
+      // Transfer body attributes (class, style, data-*) from original
+      if (bodyEl) {
+        Array.from(bodyEl.attributes).forEach(function(attr) {
+          try { iframeDoc.body.setAttribute(attr.name, attr.value); } catch(e) {}
+        });
+      }
+    } catch(e) {
+      console.warn('Editor direct inject failed:', e.message);
+    }
+  });
+
   // Ensure "show-styles" command reveals the style manager panel
   _editorInstance.Commands.add('show-styles', {
     getRowEl: function(editor) { return editor.getContainer().closest('#editor-wrap').querySelector('.panel__right'); },
@@ -2138,24 +2184,28 @@ async function saveEditor() {
   btn.textContent = '⏳ Salvando...';
   btn.className = 'et-btn et-saving';
 
-  var editedBody = _editorInstance.getHtml(); // returns body content only
-  var editedCss  = _editorInstance.getCss();  // returns only GrapesJS-managed styles
+  // Read edited body directly from the canvas iframe (not getHtml() which uses component tree)
+  var editedBody = '';
+  try {
+    var iframeDoc = _editorInstance.Canvas.getDocument();
+    if (iframeDoc && iframeDoc.body) {
+      editedBody = iframeDoc.body.innerHTML;
+    }
+  } catch(e) {}
+  // Fallback to GrapesJS getHtml() if iframe read failed
+  if (!editedBody) editedBody = _editorInstance.getHtml();
 
-  // Reconstruct full HTML: keep original <head> intact, replace <body> content
+  // Reconstruct full HTML: keep original <head> intact, replace <body> content only
   var full;
   if (_editorOriginalHtml && _editorOriginalHtml.includes('</head>')) {
-    var headPart = _editorOriginalHtml.substring(0, _editorOriginalHtml.indexOf('</head>'));
-    // Remove old inline grapesjs style if re-saving
-    headPart = headPart.replace(/<style data-gjs[^>]*>[\s\S]*?<\/style>/gi, '');
-    if (editedCss.trim()) headPart += '<style data-gjs="true">' + editedCss + '</style>\n';
-    headPart += '</head>';
+    var headPart = _editorOriginalHtml.substring(0, _editorOriginalHtml.indexOf('</head>')) + '</head>';
     // Extract body tag and attributes from original
     var bodyTagMatch = _editorOriginalHtml.match(/<body[^>]*>/i);
     var bodyOpenTag  = bodyTagMatch ? bodyTagMatch[0] : '<body>';
     full = headPart + bodyOpenTag + editedBody + '</body></html>';
   } else {
     // Fallback: original HTML had no </head> — build a minimal valid document
-    var styleTag = editedCss.trim() ? '<style data-gjs="true">' + editedCss + '</style>\n' : '';
+    var styleTag = '';
     full = '<!DOCTYPE html><html><head><meta charset="UTF-8">\n' + styleTag + '</head><body>' + editedBody + '</body></html>';
   }
 
