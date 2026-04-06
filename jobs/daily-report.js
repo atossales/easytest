@@ -29,23 +29,24 @@ function parseTime(str) {
 
 // ── Core report builder ────────────────────────────────────────────────────
 
-// days: 1 = hoje, 3 = últimos 3 dias, 7 = últimos 7 dias, 30 = últimos 30 dias
+// days: 'yesterday' = ontem, 1 = hoje, 3/7/30 = últimos N dias
 async function buildReportText(period, days) {
   const db = getDb();
   const template = getSetting('wa_message_template') || null;
 
-  // Normalize days (default 1 = today in BRT)
-  const d = parseInt(days) || 1;
+  const isYesterday = String(days) === 'yesterday';
+  const d = isYesterday ? 1 : (parseInt(days) || 1);
 
-  // Date filter: day boundary in BRT for d=1, range for d>1
-  const dateFilter = d === 1
-    ? `DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))`
-    : `datetime(created_at,'-3 hours') >= datetime('now','-3 hours','-${d} days')`;
-
-  // Variation filter uses same range
-  const varDateFilter = d === 1
-    ? `DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))`
-    : `datetime(created_at,'-3 hours') >= datetime('now','-3 hours','-${d} days')`;
+  // Date filter in BRT (UTC-3)
+  let dateFilter;
+  if (isYesterday) {
+    dateFilter = `DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours','-1 day'))`;
+  } else if (d === 1) {
+    dateFilter = `DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))`;
+  } else {
+    dateFilter = `datetime(created_at,'-3 hours') >= datetime('now','-3 hours','-${d} days')`;
+  }
+  const varDateFilter = dateFilter;
 
   const tests = db.prepare(`
     SELECT t.id, t.name,
@@ -67,9 +68,14 @@ async function buildReportText(period, days) {
   const totalRevAll      = tests.reduce((s, t) => s + t.rev_total, 0);
 
   const crPeriod = totalViewsPeriod > 0 ? (totalConvPeriod / totalViewsPeriod * 100).toFixed(2) : '0.00';
-  const now      = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-  const periodLabel = d === 1 ? 'Hoje' : `Últimos ${d} dias`;
+  // Date in BRT — avoid toLocaleDateString (unreliable ICU in Node without full locale data)
+  const _brtNow = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const _dd  = String(_brtNow.getUTCDate()).padStart(2, '0');
+  const _mm  = String(_brtNow.getUTCMonth() + 1).padStart(2, '0');
+  const now  = `${_dd}/${_mm}`;
+
+  const periodLabel = isYesterday ? 'Ontem' : d === 1 ? 'Hoje' : `Últimos ${d} dias`;
   const medals = ['🥇', '🥈', '🥉'];
 
   // Per-test: top 3 variations ranked by CR in the selected period

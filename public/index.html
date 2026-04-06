@@ -1445,12 +1445,12 @@ async function delTest(id) {
 async function rAI() {
   const ts = await api('/api/tests');
   const periodBtns = [
-    { v: '1',  l: 'Hoje' },
-    { v: '3',  l: '3 dias' },
-    { v: '7',  l: '7 dias' },
-    { v: '30', l: '30 dias' },
+    { v: '1',         l: 'Hoje' },
+    { v: 'yesterday', l: 'Ontem' },
+    { v: '7',         l: '7 dias' },
+    { v: '30',        l: '30 dias' },
   ].map(function(b, i) {
-    return '<button class="dr-btn' + (i === 2 ? ' dr-active' : '') + '" id="ai-days-' + b.v + '" onclick="selectAiDays(\'' + b.v + '\')">' + b.l + '</button>';
+    return '<button class="dr-btn' + (i === 0 ? ' dr-active' : '') + '" id="ai-days-' + b.v + '" onclick="selectAiDays(\'' + b.v + '\')">' + b.l + '</button>';
   }).join('');
 
   document.getElementById('m').innerHTML =
@@ -1482,7 +1482,7 @@ async function rAI() {
     '<p class="set-desc">Gere e envie um relatório para todos os números configurados agora, escolhendo o período.</p>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">' +
     '<div class="dr-group" id="rpt-days-group">' +
-    [['1','Hoje'],['3','3 dias'],['7','7 dias'],['30','30 dias']].map(function(b, i) {
+    [['1','Hoje'],['yesterday','Ontem'],['7','7 dias'],['30','30 dias']].map(function(b, i) {
       return '<button class="dr-btn' + (i===0?' dr-active':'') + '" id="rpt-days-' + b[0] + '" onclick="selectRptDays(\'' + b[0] + '\')">' + b[1] + '</button>';
     }).join('') +
     '</div>' +
