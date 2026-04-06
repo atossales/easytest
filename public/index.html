@@ -369,11 +369,31 @@ async function api(u, o) {
 // ══════════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════════
-async function rDash() {
-  const d = await api('/api/reports?range=30');
+async function rDash(range) {
+  range = range || '30';
+  var qp = range === 'today' ? 'start=' + brtDay(0) + '&end=' + brtDay(0)
+         : range === 'yesterday' ? 'start=' + brtDay(-1) + '&end=' + brtDay(-1)
+         : 'range=' + range;
+  const d = await api('/api/reports?' + qp);
   const t = d.totals || {};
   const tests  = d.tests  || [];
-  const active = tests.filter(function(x) { return x.active; });
+  // Active first, then inactive — each group sorted by views desc
+  const active   = tests.filter(function(x) { return  x.active; }).sort(function(a,b){ return b.views - a.views; });
+  const inactive = tests.filter(function(x) { return !x.active; }).sort(function(a,b){ return b.views - a.views; });
+
+  // Determine the winning test: confident winner with highest uplift, fallback highest CR
+  var winnerTestId = null;
+  var bestScore = -1;
+  active.forEach(function(test) {
+    if (test.views === 0) return;
+    var score = 0;
+    if (test.best_variation && test.best_variation.significance && test.best_variation.significance.confident95 && (test.best_variation.significance.uplift||0) > 0) {
+      score = 1000 + (test.best_variation.significance.uplift || 0);
+    } else {
+      score = test.conversion_rate || 0;
+    }
+    if (score > bestScore) { bestScore = score; winnerTestId = test.id; }
+  });
 
   var fmtR = function(c) { return 'R$\u00a0' + ((c||0)/100).toLocaleString('pt-BR',{minimumFractionDigits:2}); };
 
@@ -410,7 +430,7 @@ async function rDash() {
   '</div>';
 
   // ── Test insight cards ───────────────────────────
-  function buildTestCard(test) {
+  function buildTestCard(test, crowned) {
     var ctrl  = test.ctrl;
     var best  = test.best_variation;
     var hasData = test.views > 0;
@@ -452,7 +472,14 @@ async function rDash() {
     var noDataMsg = !hasData
       ? '<div style="padding:16px 0;text-align:center;color:var(--g4);font-size:12px">Aguardando primeiras visitas…</div>' : '';
 
-    return '<div style="background:' + cardBg + ';border:1.5px solid ' + cardBorder + ';border-radius:var(--r);padding:18px">' +
+    var crownBadge = crowned
+      ? '<div style="position:absolute;top:-11px;right:12px;background:linear-gradient(135deg,#F59E0B,#FBBF24);color:#7C2D12;font-size:10px;font-weight:900;padding:2px 8px;border-radius:20px;box-shadow:0 2px 8px #F59E0B55;letter-spacing:.4px">👑 MELHOR AGORA</div>'
+      : '';
+    var crownBorder = crowned ? '#F59E0B' : cardBorder;
+    var crownBg     = crowned && !isWin ? 'linear-gradient(160deg,#FFFBEB,var(--w))' : cardBg;
+
+    return '<div style="position:relative;background:' + crownBg + ';border:' + (crowned?'2px':'1.5px') + ' solid ' + crownBorder + ';border-radius:var(--r);padding:18px">' +
+      crownBadge +
       '<div class="tac-head">' +
         '<div class="tac-name">' + esc(test.name) + '</div>' +
         '<span class="tac-st ' + stClass + '">' + stLabel + '</span>' +
@@ -482,7 +509,7 @@ async function rDash() {
 
   var tacSection = active.length
     ? '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--g5);margin-bottom:12px">Testes em andamento</div>' +
-      '<div class="tac-grid">' + active.map(buildTestCard).join('') + '</div>'
+      '<div class="tac-grid">' + active.map(function(test){ return buildTestCard(test, test.id === winnerTestId); }).join('') + '</div>'
     : '<div class="card" style="text-align:center;padding:40px 20px;margin-bottom:20px">' +
       '<div style="font-size:32px;margin-bottom:12px">🧪</div>' +
       '<div style="font-weight:800;font-size:15px;margin-bottom:6px">Nenhum teste ativo</div>' +
@@ -490,7 +517,8 @@ async function rDash() {
       '<button class="btn bp" onclick="go(\'new\')">+ Criar primeiro teste</button></div>';
 
   // ── Performance table ────────────────────────────
-  var perfRows = tests.map(function(x) {
+  var allSorted = active.concat(inactive);
+  var perfRows = allSorted.map(function(x) {
     var crColor = x.conversion_rate >= 3 ? 'var(--gn)' : x.conversion_rate >= 1 ? 'var(--bk)' : 'var(--rd)';
     var badge   = x.active
       ? '<span class="badge b-on">Ativo</span>'
@@ -506,7 +534,7 @@ async function rDash() {
     '</tr>';
   }).join('');
 
-  var perfTable = tests.length ? '<div class="card" style="margin-bottom:0">' +
+  var perfTable = allSorted.length ? '<div class="card" style="margin-bottom:0">' +
     '<h3 style="margin-bottom:14px">📊 Todos os testes — últimos 30 dias</h3>' +
     '<div style="overflow-x:auto"><table><thead><tr>' +
     '<th>Teste</th><th>Visitantes</th><th>Conversões</th><th>Taxa CR</th><th>Receita</th><th>Status</th><th></th>' +
@@ -516,16 +544,28 @@ async function rDash() {
   var icnRefresh = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>';
   var icnPlus    = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
 
+  var periodLabels = { today:'Hoje', yesterday:'Ontem', '7':'7 dias', '14':'14 dias', '30':'30 dias', '0':'Todo período' };
+  var periodLabel  = periodLabels[range] || (range + ' dias');
+  function dPill(label, val) {
+    var isActive = val === range;
+    return '<button class="dr-btn' + (isActive?' dr-active':'') + '" onclick="rDash(\'' + val + '\')">' + label + '</button>';
+  }
+  var dashPeriod =
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px">' +
+    dPill('Hoje','today') + dPill('Ontem','yesterday') + dPill('7 dias','7') +
+    dPill('14 dias','14') + dPill('30 dias','30') + dPill('Tudo','0') +
+    '</div>';
+
   document.getElementById('m').innerHTML =
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">' +
       '<div><h1 style="font-weight:900;font-size:22px;letter-spacing:-.5px">Dashboard</h1>' +
-      '<div style="font-size:12px;color:var(--g5);font-weight:500;margin-top:2px">Visão geral — últimos 30 dias</div></div>' +
+      '<div style="font-size:12px;color:var(--g5);font-weight:500;margin-top:2px">Visão geral — ' + periodLabel + '</div></div>' +
       '<div style="display:flex;gap:8px">' +
-        '<button class="btn bs" onclick="rDash()">' + icnRefresh + 'Atualizar</button>' +
+        '<button class="btn bs" onclick="rDash(\'' + range + '\')">' + icnRefresh + 'Atualizar</button>' +
         '<button class="btn bp" onclick="go(\'new\')">' + icnPlus + 'Novo Teste</button>' +
       '</div>' +
     '</div>' +
-    kpiRow + tacSection + perfTable;
+    dashPeriod + kpiRow + tacSection + perfTable;
 }
 
 // ══════════════════════════════════════════════════
@@ -537,6 +577,11 @@ function rTestsAuto() {
 
 async function rTests() {
   const ts = await api('/api/tests');
+  // Active first, then inactive — each group by total_views desc
+  ts.sort(function(a, b) {
+    if (a.active !== b.active) return b.active - a.active;
+    return b.total_views - a.total_views;
+  });
   document.getElementById('m').innerHTML =
     '<div class="ph"><div><h1>Meus Testes</h1><div class="sub">' + ts.length + ' teste' + (ts.length !== 1 ? 's' : '') + '</div></div>' +
     '<button class="btn bp" onclick="go(\'new\')">+ Novo Teste</button></div>' +
@@ -1094,9 +1139,10 @@ async function rMobileTests(filter) {
   const q  = (filter || '').toLowerCase();
   const filtered = q ? ts.filter(function(t) { return t.name.toLowerCase().includes(q); }) : ts;
 
-  // Sort options
+  // Sort options — always active first within each sort
   const sort = document.getElementById('mob-sort') ? document.getElementById('mob-sort').value : 'cr';
   filtered.sort(function(a, b) {
+    if (a.active !== b.active) return b.active - a.active;
     if (sort === 'cr') return (b.total_views > 0 ? b.total_conversions/b.total_views : 0) - (a.total_views > 0 ? a.total_conversions/a.total_views : 0);
     if (sort === 'views') return b.total_views - a.total_views;
     if (sort === 'conv') return b.total_conversions - a.total_conversions;
