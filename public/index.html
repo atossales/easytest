@@ -721,9 +721,22 @@ async function rRpt(id, range, start, end) {
   sigVars.sort(function(a, b) { return (b.significance.uplift || 0) - (a.significance.uplift || 0); });
   const banner = buildBanner(sigVars[0], s);
 
-  // Variation cards
+  // Variation cards — determine the single best non-control variation for the period
   const ctrl = (d.variations || []).find(function(v) { return v.isControl; });
-  const cards = (d.variations || []).map(function(v, i) { return buildVarCard(v, i, d.test && d.test.id, ctrl); }).join('');
+  const activeVars = (d.variations || []).filter(function(v) { return !v.isControl && v.active !== 0 && v.views > 0; });
+  // Prefer statistically confident winner; fallback to highest CR
+  var bestVarId = null;
+  var bestVarScore = -1;
+  activeVars.forEach(function(v) {
+    var score = 0;
+    if (v.significance && v.significance.confident95 && (v.significance.uplift || 0) > 0) {
+      score = 1000 + (v.significance.uplift || 0);
+    } else {
+      score = v.conversion_rate || 0;
+    }
+    if (score > bestVarScore) { bestVarScore = score; bestVarId = v.id; }
+  });
+  const cards = (d.variations || []).map(function(v, i) { return buildVarCard(v, i, d.test && d.test.id, ctrl, v.id === bestVarId); }).join('');
 
   // Sample progress
   const sampleBlock = buildSampleBlock(s, d.variations || []);
@@ -941,7 +954,7 @@ function buildFunnelSection(funnel) {
 }
 
 // ── Variation card ────────────────────────────────
-function buildVarCard(v, i, testId, ctrl) {
+function buildVarCard(v, i, testId, ctrl, crowned) {
   const color = COLORS[i % COLORS.length];
   const isCtrl = v.isControl;
   const sig = v.significance;
@@ -982,7 +995,11 @@ function buildVarCard(v, i, testId, ctrl) {
       '</div>'
     : '';
 
-  const winnerClass = (sig && (sig.confident95 || sig.confident99) && !isCtrl ? ' vc-winner' : '') + (!isActive ? ' vc-paused' : '');
+  const winnerClass = (sig && (sig.confident95 || sig.confident99) && !isCtrl ? ' vc-winner' : '') + (!isActive ? ' vc-paused' : '') + (crowned ? ' vc-crowned' : '');
+
+  const crownBadge = crowned
+    ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#F59E0B,#FBBF24);color:#7C2D12;font-size:9px;font-weight:900;padding:2px 10px;border-radius:20px;box-shadow:0 2px 8px #F59E0B66;letter-spacing:.5px;white-space:nowrap">👑 MELHOR AGORA</div>'
+    : '';
 
   const revStr = v.revenue_cents > 0
     ? 'R$ ' + (v.revenue_cents / 100).toLocaleString('pt-BR', {minimumFractionDigits:2})
@@ -991,7 +1008,8 @@ function buildVarCard(v, i, testId, ctrl) {
     ? 'R$ ' + (v.revenue_cents / v.conversions / 100).toLocaleString('pt-BR', {minimumFractionDigits:2})
     : '';
 
-  return '<div class="vc' + winnerClass + '">' +
+  return '<div class="vc' + winnerClass + '" style="position:relative' + (crowned ? ';border-color:#F59E0B;border-width:2px' : '') + '">' +
+    crownBadge +
     '<div class="vct" style="background:' + color + '"></div>' +
     '<div class="vcb" style="margin-top:6px"><div style="font-size:22px;font-weight:900;color:var(--b);letter-spacing:-1px;line-height:1">#' + v.id + '</div>' + sigBadge + '</div>' +
     '<div style="font-size:11px;font-weight:700;color:var(--g5);margin-bottom:4px">' + esc(v.name) + '</div>' +
