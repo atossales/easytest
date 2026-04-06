@@ -36,7 +36,16 @@ async function callGemini(prompt) {
 
   const text = resp?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error('Gemini sem resposta: ' + JSON.stringify(resp).slice(0, 300));
-  return text;
+
+  // Strip markdown that Gemini insists on adding despite instructions
+  return text
+    .replace(/^#{1,6}\s+/gm, '')      // ### Título → Título
+    .replace(/\*\*(.+?)\*\*/g, '$1')   // **bold** → bold
+    .replace(/\*(.+?)\*/g, '$1')       // *italic* → italic
+    .replace(/^-{3,}\s*$/gm, '')       // --- separadores
+    .replace(/^>\s+/gm, '')            // > blockquote
+    .replace(/`(.+?)`/g, '$1')         // `code` → code
+    .trim();
 }
 
 module.exports = { callGemini };
