@@ -129,6 +129,21 @@ ${pagesSection}
 `;
 }
 
+// ── Shared range parser ────────────────────────────────────────────────────
+
+function parseRange(rangeParam) {
+  // Returns { start: Date, end: Date } in UTC
+  const today = new Date();
+  if (rangeParam === 'yesterday') {
+    const start = new Date(today); start.setDate(today.getDate() - 1);
+    const end   = new Date(today); end.setDate(today.getDate() - 1);
+    return { start, end: today };
+  }
+  const days  = parseInt(rangeParam || '7') || 7;
+  const start = new Date(today); start.setDate(today.getDate() - days);
+  return { start, end: today };
+}
+
 // ── GET /api/ai/analyze — análise geral de todas as páginas ───────────────
 router.get('/analyze', async (req, res) => {
   const clarityToken   = process.env.CLARITY_API_TOKEN;
@@ -138,11 +153,9 @@ router.get('/analyze', async (req, res) => {
     return res.status(503).json({ error: 'GEMINI_API_KEY não configurada nas variáveis de ambiente' });
   }
 
-  const db    = getDb();
-  const range = parseInt(req.query.range || '7');
-  const today = new Date();
-  const start = new Date(today); start.setDate(today.getDate() - range);
-  const fmt   = d => d.toISOString().split('T')[0];
+  const db  = getDb();
+  const { start, end } = parseRange(req.query.range);
+  const fmt = d => d.toISOString().split('T')[0];
 
   // Aggregate EasyTest data
   const tests = db.prepare(`
@@ -178,8 +191,8 @@ router.get('/analyze', async (req, res) => {
   let clarityPages   = null;
   if (clarityToken && clarityProject) {
     [clarityMetrics, clarityPages] = await Promise.all([
-      getClarityMetrics(clarityProject, clarityToken, fmt(start), fmt(today)),
-      getClarityPages(clarityProject, clarityToken, fmt(start), fmt(today)),
+      getClarityMetrics(clarityProject, clarityToken, fmt(start), fmt(end)),
+      getClarityPages(clarityProject, clarityToken, fmt(start), fmt(end)),
     ]);
   }
 
@@ -208,10 +221,8 @@ router.get('/analyze/:id', async (req, res) => {
   const test = db.prepare('SELECT * FROM tests WHERE id = ?').get(id);
   if (!test) return res.status(404).json({ error: 'Teste não encontrado' });
 
-  const range = parseInt(req.query.range || '7');
-  const today = new Date();
-  const start = new Date(today); start.setDate(today.getDate() - range);
-  const fmt   = d => d.toISOString().split('T')[0];
+  const { start, end } = parseRange(req.query.range);
+  const fmt = d => d.toISOString().split('T')[0];
 
   const NO_BOT = 'AND COALESCE(is_bot,0)=0';
   const vars   = db.prepare('SELECT * FROM variations WHERE test_id = ? ORDER BY id').all(id);
@@ -242,7 +253,7 @@ router.get('/analyze/:id', async (req, res) => {
     const pageUrl = test.custom_domain
       ? `https://${test.custom_domain}`
       : (process.env.SITE_URL ? `${process.env.SITE_URL}/t/${test.test_uri}` : null);
-    clarityMetrics = await getClarityMetrics(clarityProject, clarityToken, fmt(start), fmt(today), pageUrl || undefined);
+    clarityMetrics = await getClarityMetrics(clarityProject, clarityToken, fmt(start), fmt(end), pageUrl || undefined);
   }
 
   try {
