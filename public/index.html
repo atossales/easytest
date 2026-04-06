@@ -1878,6 +1878,7 @@ async function rMessages() {
 var _editorInstance = null;
 var _editorTestId   = null;
 var _editorVarId    = null;
+var _editorOriginalHtml = null; // full original HTML for head reconstruction
 
 async function openEditor(testId, varId, varName) {
   _editorTestId = testId;
@@ -1906,15 +1907,40 @@ async function openEditor(testId, varId, varName) {
   if (_editorInstance) { try { _editorInstance.destroy(); } catch(_) {} _editorInstance = null; }
   document.getElementById('gjs').innerHTML = '';
 
+  _editorOriginalHtml = data.html;
+
+  // Parse HTML — extract body content, inline styles and external CSS links
+  // so GrapesJS canvas iframe loads with full styles
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(data.html, 'text/html');
+
+  // External CSS links
+  var extCss = [];
+  doc.querySelectorAll('link[rel="stylesheet"]').forEach(function(l) {
+    var href = l.getAttribute('href');
+    if (href) extCss.push(href);
+  });
+  // Inline <style> blocks
+  var inlineStyles = '';
+  doc.querySelectorAll('style').forEach(function(s) { inlineStyles += s.textContent + '\n'; });
+  // Body content (without scripts to avoid conflicts)
+  var bodyHtml = doc.body ? doc.body.innerHTML : data.html;
+
   // Init GrapesJS
   _editorInstance = grapesjs.init({
     container: '#gjs',
     height: '100%',
     fromElement: false,
     storageManager: false,
+    components: bodyHtml,
+    style: inlineStyles,
+    canvas: {
+      styles: extCss,  // load external stylesheets inside the iframe
+      scripts: [],
+    },
     plugins: [typeof grapesjsBlocksBasic !== 'undefined' ? grapesjsBlocksBasic : function(){}],
     pluginsOpts: {},
-    panels: { defaults: [] }, // hide default panels, we use our topbar
+    panels: { defaults: [] },
     deviceManager: {
       devices: [
         { name: 'Desktop', width: '' },
@@ -1932,9 +1958,6 @@ async function openEditor(testId, varId, varName) {
       ],
     },
   });
-
-  // Load HTML
-  _editorInstance.setComponents(data.html);
 
   // Add device buttons to our topbar
   var topbar = document.getElementById('editor-topbar');
@@ -1967,11 +1990,24 @@ async function saveEditor() {
   btn.textContent = '⏳ Salvando...';
   btn.className = 'et-btn et-saving';
 
-  var html = _editorInstance.getHtml();
-  var css  = _editorInstance.getCss();
-  // Inject GrapesJS CSS into the <head> so styles persist
-  var full = html.replace('</head>', '<style>' + css + '</style>\n</head>');
-  if (!full.includes('</head>')) full = '<style>' + css + '</style>\n' + html;
+  var editedBody = _editorInstance.getHtml(); // returns body content only
+  var editedCss  = _editorInstance.getCss();  // returns only GrapesJS-managed styles
+
+  // Reconstruct full HTML: keep original <head> intact, replace <body> content
+  var full;
+  if (_editorOriginalHtml && _editorOriginalHtml.includes('</head>')) {
+    var headPart = _editorOriginalHtml.substring(0, _editorOriginalHtml.indexOf('</head>'));
+    // Remove old inline grapesjs style if re-saving
+    headPart = headPart.replace(/<style data-gjs[^>]*>[\s\S]*?<\/style>/gi, '');
+    if (editedCss.trim()) headPart += '<style data-gjs="true">' + editedCss + '</style>\n';
+    headPart += '</head>';
+    // Extract body tag and attributes from original
+    var bodyTagMatch = _editorOriginalHtml.match(/<body[^>]*>/i);
+    var bodyOpenTag  = bodyTagMatch ? bodyTagMatch[0] : '<body>';
+    full = headPart + bodyOpenTag + editedBody + '</body></html>';
+  } else {
+    full = '<style>' + editedCss + '</style>\n' + editedBody;
+  }
 
   try {
     await api('/api/tests/' + _editorTestId + '/variations/' + _editorVarId + '/html-content', {
