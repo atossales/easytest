@@ -1,5 +1,6 @@
 const express = require('express');
 const router  = express.Router();
+const crypto  = require('crypto');
 const { getDb } = require('../lib/database');
 const logger    = require('../lib/logger');
 
@@ -77,11 +78,13 @@ function getFunnelStepIndex(event) {
 router.post('/the-members', express.json(), (req, res) => {
   const db = getDb();
 
-  // Validate x-signature header
+  // Validate x-signature header (timing-safe comparison to prevent timing attacks)
   const token = process.env.THE_MEMBERS_WEBHOOK_TOKEN;
   if (token) {
-    const sig = req.headers['x-signature'];
-    if (sig !== token) {
+    const sig = req.headers['x-signature'] || '';
+    const sigBuffer = Buffer.from(sig);
+    const expBuffer = Buffer.from(token);
+    if (sigBuffer.length !== expBuffer.length || !crypto.timingSafeEqual(sigBuffer, expBuffer)) {
       logger.warn('The Members webhook: invalid signature');
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -202,25 +205,6 @@ router.get('/conversion', (req, res) => {
   }
 
   res.json({ ok: true, converted });
-});
-
-// ── GET /api/webhook/debug-revenue ──────────────────────────────────────────
-// Temporary diagnostic: shows last 20 conversions with revenue stored in DB
-router.get('/debug-revenue', (req, res) => {
-  const db = getDb();
-  const rows = db.prepare(`
-    SELECT i.id, i.test_id, t.name AS test_name, i.variation_id,
-           i.client_id, i.revenue_cents, i.created_at
-    FROM interactions i
-    JOIN tests t ON t.id = i.test_id
-    WHERE i.type = 'conversion'
-    ORDER BY i.created_at DESC LIMIT 20
-  `).all();
-  res.json({ count: rows.length, conversions: rows.map(r => ({
-    ...r,
-    revenue_brl: (r.revenue_cents / 100).toFixed(2),
-    client_id: r.client_id ? r.client_id.slice(0, 8) + '...' : null,
-  })) });
 });
 
 module.exports = router;

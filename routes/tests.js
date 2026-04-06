@@ -220,19 +220,38 @@ router.put('/:id/variations/:vid', (req, res) => {
 
 // DELETE /api/tests/:id
 router.delete('/:id', (req, res) => {
-  const db   = getDb();
-  const vars = db.prepare('SELECT * FROM variations WHERE test_id = ?').all(req.params.id);
-  vars.forEach(v => {
-    if (v.file_path) {
-      const fp = path.resolve(UPLOADS, path.basename(v.file_path));
-      if (fp.startsWith(UPLOADS) && fs.existsSync(fp)) fs.unlinkSync(fp);
+  const db = getDb();
+  try {
+    // Collect file paths before deleting from DB
+    const vars = db.prepare('SELECT * FROM variations WHERE test_id = ?').all(req.params.id);
+    const filesToDelete = vars
+      .filter(v => v.file_path)
+      .map(v => ({ orig: v.file_path, safe: path.resolve(UPLOADS, path.basename(v.file_path)) }))
+      .filter(f => f.safe.startsWith(UPLOADS));
+
+    // Delete from DB in transaction first
+    const deleteAll = db.transaction(() => {
+      db.prepare('DELETE FROM interactions WHERE test_id = ?').run(req.params.id);
+      db.prepare('DELETE FROM funnel_events WHERE test_id = ?').run(req.params.id);
+      db.prepare('DELETE FROM variations WHERE test_id = ?').run(req.params.id);
+      db.prepare('DELETE FROM tests WHERE id = ?').run(req.params.id);
+    });
+    deleteAll();
+
+    // Delete files after DB success (best-effort, don't fail if file missing)
+    for (const f of filesToDelete) {
+      try {
+        if (fs.existsSync(f.safe)) fs.unlinkSync(f.safe);
+      } catch (e) {
+        logger.warn('Could not delete variation file', { path: f.orig, error: e.message });
+      }
     }
-  });
-  db.prepare('DELETE FROM interactions WHERE test_id = ?').run(req.params.id);
-  db.prepare('DELETE FROM variations WHERE test_id = ?').run(req.params.id);
-  db.prepare('DELETE FROM tests WHERE id = ?').run(req.params.id);
-  logger.info('Test deleted', { id: req.params.id });
-  res.json({ success: true });
+
+    res.json({ success: true });
+  } catch (e) {
+    logger.error('Test deletion failed', { id: req.params.id, error: e.message });
+    res.status(500).json({ error: 'Falha ao deletar o teste' });
+  }
 });
 
 // DELETE /api/tests/:id/variations/:vid

@@ -43,7 +43,30 @@ const apiLimiter = rateLimit({
 });
 
 // ── Core middleware ───────────────────────────────────────────────────────
-app.use(cors({ origin: true, credentials: true }));
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : null;
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, same-origin)
+    if (!origin) return callback(null, true);
+    if (!ALLOWED_ORIGINS) return callback(null, true); // dev mode: allow all
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // CSP permissive (allows inline scripts needed for embed.js)
+  res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:; img-src * data:; frame-src *;");
+  next();
+});
+
 app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -302,16 +325,26 @@ app.get('/p/:tid/:vid', publicLimiter, (req, res) => {
   const cid     = req.cookies?.cp_uid || uuidv4();
   const eventId = buildEventId(test.id, v.id, cid);
 
+  // Basic snippet safety: keep snippets but strip dangerous patterns
+  function sanitizeSnippet(s) {
+    if (!s) return '';
+    // Remove javascript: protocol handlers from attributes
+    return s.replace(/javascript\s*:/gi, 'javascript_blocked:')
+             .replace(/on\w+\s*=\s*["'][^"']*["']/gi, ''); // strip inline handlers
+  }
+  const safeHead = sanitizeSnippet(test.head_snippet || '');
+  const safeBody = sanitizeSnippet(test.body_snippet || '');
+
   // Inject custom head snippet
-  if (test.head_snippet) {
-    if (html.includes('</head>')) html = html.replace('</head>', test.head_snippet + '\n</head>');
-    else html = test.head_snippet + '\n' + html;
+  if (safeHead) {
+    if (html.includes('</head>')) html = html.replace('</head>', safeHead + '\n</head>');
+    else html = safeHead + '\n' + html;
   }
 
   // Inject custom body snippet
-  if (test.body_snippet) {
-    if (html.includes('</body>')) html = html.replace('</body>', test.body_snippet + '\n</body>');
-    else html += '\n' + test.body_snippet;
+  if (safeBody) {
+    if (html.includes('</body>')) html = html.replace('</body>', safeBody + '\n</body>');
+    else html += '\n' + safeBody;
   }
 
   // Build Meta Pixel standard event calls

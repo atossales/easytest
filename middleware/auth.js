@@ -7,7 +7,12 @@ const SESSION_TTL    = 8 * 60 * 60 * 1000; // 8 hours
 const sessions = new Map();
 
 function getPassword() {
-  return process.env.ADMIN_PASSWORD || 'admin';
+  const pw = process.env.ADMIN_PASSWORD;
+  if (!pw) {
+    // No password configured — block all logins
+    return null;
+  }
+  return pw;
 }
 
 function createSession() {
@@ -46,7 +51,11 @@ function requireAuth(req, res, next) {
 
 function handleLogin(req, res) {
   const { password } = req.body;
-  if (password === getPassword()) {
+  const configuredPassword = getPassword();
+  if (configuredPassword === null) {
+    return res.status(503).send(loginPage('ADMIN_PASSWORD não configurado — defina a variável de ambiente'));
+  }
+  if (password === configuredPassword) {
     const token = createSession();
     res.cookie(SESSION_COOKIE, token, {
       maxAge: SESSION_TTL,

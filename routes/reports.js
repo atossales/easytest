@@ -41,17 +41,45 @@ router.get('/', (req, res) => {
   const revToday = db.prepare(`SELECT COALESCE(SUM(revenue_cents),0) AS r FROM interactions WHERE type='conversion' ${dfToday}`).get().r || 0;
   const revYest  = db.prepare(`SELECT COALESCE(SUM(revenue_cents),0) AS r FROM interactions WHERE type='conversion' ${dfYest}`).get().r || 0;
 
-  const overview = tests.map(t => {
-    const views       = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id = ? ${df} ${NO_BOT}`).get(t.id).c || 0;
-    const conversions = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id = ? AND i.type = 'conversion' ${df} ${NO_BOT}`).get(t.id).c || 0;
-    const revenue     = db.prepare(`SELECT COALESCE(SUM(i.revenue_cents),0) AS r FROM interactions i WHERE i.test_id = ? AND i.type = 'conversion' ${df} ${NO_BOT}`).get(t.id).r || 0;
+  // Aggregate all test stats in one query each
+  const allStats = db.prepare(`
+    SELECT test_id,
+           COUNT(*) AS views,
+           COUNT(CASE WHEN type='conversion' THEN 1 END) AS conversions,
+           COALESCE(SUM(CASE WHEN type='conversion' THEN revenue_cents END), 0) AS revenue_cents
+    FROM interactions i
+    WHERE 1=1 ${df} ${NO_BOT}
+    GROUP BY test_id
+  `).all();
+  const statsByTest = {};
+  allStats.forEach(function(s) { statsByTest[s.test_id] = s; });
 
-    // Variation breakdown for dashboard cards (ctrl + best_variation)
+  // Aggregate variation stats in one query each
+  const allVarStats = db.prepare(`
+    SELECT test_id, variation_id,
+           COUNT(*) AS views,
+           COUNT(CASE WHEN type='conversion' THEN 1 END) AS conversions
+    FROM interactions i
+    WHERE 1=1 ${df} ${NO_BOT}
+    GROUP BY test_id, variation_id
+  `).all();
+  const varStatsByTest = {};
+  allVarStats.forEach(function(vs) {
+    if (!varStatsByTest[vs.test_id]) varStatsByTest[vs.test_id] = {};
+    varStatsByTest[vs.test_id][vs.variation_id] = vs;
+  });
+
+  const overview = tests.map(t => {
+    const ts = statsByTest[t.id] || { views: 0, conversions: 0, revenue_cents: 0 };
+    const views = ts.views || 0;
+    const conversions = ts.conversions || 0;
+    const revenue = ts.revenue_cents || 0;
+
     const vars = db.prepare('SELECT * FROM variations WHERE test_id = ? AND COALESCE(active,1)=1 ORDER BY id').all(t.id);
+    const varsByTest = varStatsByTest[t.id] || {};
     const varStats = vars.map(v => {
-      const vv = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id=? AND i.variation_id=? ${df} ${NO_BOT}`).get(t.id, v.id).c || 0;
-      const vc = db.prepare(`SELECT COUNT(*) AS c FROM interactions i WHERE i.test_id=? AND i.variation_id=? AND i.type='conversion' ${df} ${NO_BOT}`).get(t.id, v.id).c || 0;
-      return { ...v, views: vv, conversions: vc, conversion_rate: +(vv > 0 ? (vc/vv*100).toFixed(2) : 0) };
+      const vs = varsByTest[v.id] || { views: 0, conversions: 0 };
+      return { ...v, views: vs.views || 0, conversions: vs.conversions || 0, conversion_rate: +(vs.views > 0 ? (vs.conversions/vs.views*100).toFixed(2) : 0) };
     });
     const enriched    = analyzeVariations(varStats);
     const ctrl        = enriched.find(v => v.isControl) || enriched[0] || null;
