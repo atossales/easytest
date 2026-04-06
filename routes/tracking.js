@@ -61,7 +61,8 @@ router.post('/view', (req, res) => {
 // ── POST /api/track/conversion ────────────────────────────────────────────
 router.post('/conversion', async (req, res) => {
   const db  = getDb();
-  const { page_url, cid: cidBody } = req.body;
+  const { page_url, revenue_cents: revBody, cid: cidBody } = req.body;
+  const revenueCents = Math.round(parseFloat(revBody) || 0);
   // Accept cid from cookie OR from body (cross-origin fallback)
   const cid = req.cookies?.cp_uid || cidBody;
 
@@ -108,8 +109,8 @@ router.post('/conversion', async (req, res) => {
 
     // Record conversion
     db.prepare(
-      "UPDATE interactions SET type = 'conversion' WHERE test_id = ? AND client_id = ? AND type = 'view'"
-    ).run(t.id, cid);
+      "UPDATE interactions SET type = 'conversion', revenue_cents = ? WHERE test_id = ? AND client_id = ? AND type = 'view'"
+    ).run(revenueCents, t.id, cid);
 
     converted++;
     convertedTests.push(t);

@@ -154,6 +154,8 @@ router.post('/conversion', express.json(), (req, res) => {
   const cid = req.query.cid || req.query.cp_uid || req.body?.cid || req.body?.cp_uid;
   if (!cid) return res.json({ converted: 0, error: 'cid is required' });
 
+  const revenueCents = Math.round(parseFloat(req.body?.revenue_cents || req.body?.amount || 0) || 0);
+
   let converted = 0;
   const tests = db.prepare('SELECT * FROM tests WHERE active = 1').all();
   for (const t of tests) {
@@ -162,10 +164,10 @@ router.post('/conversion', express.json(), (req, res) => {
     ).get(t.id, cid);
     if (!ix) continue;
     db.prepare(
-      "UPDATE interactions SET type = 'conversion' WHERE test_id = ? AND client_id = ? AND type = 'view'"
-    ).run(t.id, cid);
+      "UPDATE interactions SET type = 'conversion', revenue_cents = ? WHERE test_id = ? AND client_id = ? AND type = 'view'"
+    ).run(revenueCents, t.id, cid);
     converted++;
-    logger.info('Webhook conversion registered', { cid: cid.slice(0, 8) });
+    logger.info('Webhook conversion registered', { cid: cid.slice(0, 8), revenue_cents: revenueCents });
   }
 
   res.json({ ok: true, converted });
@@ -180,6 +182,8 @@ router.get('/conversion', (req, res) => {
   const cid = req.query.cid || req.query.cp_uid;
   if (!cid) return res.json({ converted: 0, error: 'cid is required' });
 
+  const revenueCents = Math.round(parseFloat(req.query.revenue_cents || req.query.amount || 0) || 0);
+
   let converted = 0;
   const tests = db.prepare('SELECT * FROM tests WHERE active = 1').all();
   for (const t of tests) {
@@ -188,8 +192,8 @@ router.get('/conversion', (req, res) => {
     ).get(t.id, cid);
     if (!ix) continue;
     db.prepare(
-      "UPDATE interactions SET type = 'conversion' WHERE test_id = ? AND client_id = ? AND type = 'view'"
-    ).run(t.id, cid);
+      "UPDATE interactions SET type = 'conversion', revenue_cents = ? WHERE test_id = ? AND client_id = ? AND type = 'view'"
+    ).run(revenueCents, t.id, cid);
     converted++;
   }
 

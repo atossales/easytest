@@ -39,19 +39,23 @@ router.get('/', (req, res) => {
     return { ...t, views, conversions, conversion_rate: +(views > 0 ? (conversions / views * 100).toFixed(2) : 0), revenue_cents: revenue };
   });
 
-  const ranking = [...overview].filter(t => t.views > 0).sort((a, b) => b.conversion_rate - a.conversion_rate);
+  const ranking = [...overview].filter(t => t.views > 0).sort((a, b) => b.conversion_rate - a.conversion_rate).map(t => ({
+    ...t, total_revenue_cents: t.revenue_cents,
+  }));
   const tv = overview.reduce((s, t) => s + t.views, 0);
   const tc = overview.reduce((s, t) => s + t.conversions, 0);
+  const tr = overview.reduce((s, t) => s + (t.revenue_cents || 0), 0);
 
   res.json({
     tests: overview,
     ranking,
     totals: {
-      total_tests:      tests.length,
-      active_tests:     tests.filter(t => t.active).length,
-      total_views:      tv,
-      total_conversions: tc,
-      overall_rate:     tv > 0 ? (tc / tv * 100).toFixed(2) : '0.00',
+      total_tests:         tests.length,
+      active_tests:        tests.filter(t => t.active).length,
+      total_views:         tv,
+      total_conversions:   tc,
+      overall_rate:        tv > 0 ? (tc / tv * 100).toFixed(2) : '0.00',
+      total_revenue_cents: tr,
     },
   });
 });

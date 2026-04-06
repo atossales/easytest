@@ -363,12 +363,25 @@ async function rDash() {
     '<div class="sc"><div class="sl">Conversões</div><div class="sv green">' + N(t.total_conversions) + '</div></div>' +
     '<div class="sc"><div class="sl">Taxa Geral</div><div class="sv blue">' + (t.overall_rate || '0.00') + '%</div></div>' +
     '</div>' +
+    (function() {
+      var rev = t.total_revenue_cents || 0;
+      var ticket = (t.total_conversions > 0 && rev > 0) ? (rev / t.total_conversions / 100) : 0;
+      var fmtRev = 'R$ ' + (rev/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
+      var fmtTicket = ticket > 0 ? 'Ticket médio: R$ ' + ticket.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+      return '<div style="background:linear-gradient(135deg,#00C48C18,#00C48C08);border:1.5px solid #00C48C40;border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">' +
+        '<div><div style="font-size:11px;font-weight:700;color:#00C48C;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">💰 Receita Total (30 dias)</div>' +
+        '<div style="font-size:28px;font-weight:900;color:#00C48C;letter-spacing:-1px">' + fmtRev + '</div>' +
+        (fmtTicket ? '<div style="font-size:11px;color:var(--g5);margin-top:3px">' + fmtTicket + '</div>' : '') + '</div>' +
+        '<div style="text-align:right"><div style="font-size:11px;color:var(--g5);margin-bottom:4px">Últ. 30 dias</div>' +
+        '<div style="font-size:13px;font-weight:700;color:var(--g4)">' + N(t.total_conversions) + ' vendas</div></div></div>';
+    })() +
     '<div class="grid-2">' +
     '<div class="card"><h3>🏆 Ranking por Conversão</h3>' +
     (d.ranking && d.ranking.length
       ? d.ranking.map(function(r, i) {
+          var revStr = r.total_revenue_cents > 0 ? ' · R$ ' + (r.total_revenue_cents/100).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
           return '<div class="ri"><div class="rp ' + (i===0?'g':i===1?'s':'br') + '">' + (i+1) + '</div>' +
-            '<div style="flex:1"><div class="rn">' + esc(r.name) + '</div><div class="rt">' + N(r.views) + ' vis · ' + N(r.conversions) + ' conv</div></div>' +
+            '<div style="flex:1"><div class="rn">' + esc(r.name) + '</div><div class="rt">' + N(r.views) + ' vis · ' + N(r.conversions) + ' conv' + revStr + '</div></div>' +
             '<div class="rr">' + r.conversion_rate + '%</div></div>';
         }).join('')
       : '<div style="padding:20px;text-align:center;color:var(--g3);font-size:12px">Sem dados ainda</div>') +
@@ -539,7 +552,8 @@ async function rRpt(id, range, start, end) {
   const banner = buildBanner(sigVars[0], s);
 
   // Variation cards
-  const cards = (d.variations || []).map(function(v, i) { return buildVarCard(v, i, d.test && d.test.id); }).join('');
+  const ctrl = (d.variations || []).find(function(v) { return v.isControl; });
+  const cards = (d.variations || []).map(function(v, i) { return buildVarCard(v, i, d.test && d.test.id, ctrl); }).join('');
 
   // Sample progress
   const sampleBlock = buildSampleBlock(s, d.variations || []);
@@ -757,7 +771,7 @@ function buildFunnelSection(funnel) {
 }
 
 // ── Variation card ────────────────────────────────
-function buildVarCard(v, i, testId) {
+function buildVarCard(v, i, testId, ctrl) {
   const color = COLORS[i % COLORS.length];
   const isCtrl = v.isControl;
   const sig = v.significance;
@@ -772,7 +786,8 @@ function buildVarCard(v, i, testId) {
   let upliftHtml = '';
   if (!isCtrl && sig && sig.uplift !== null && sig.uplift !== undefined) {
     const up = sig.uplift;
-    upliftHtml = '<div class="upl ' + (up >= 0 ? 'up' : 'dn') + '">' + (up >= 0 ? '▲ +' : '▼ ') + up.toFixed(1) + '% vs variação A</div>';
+    var ctrlLabel = ctrl ? 'vs #' + ctrl.id : 'vs controle';
+    upliftHtml = '<div class="upl ' + (up >= 0 ? 'up' : 'dn') + '">' + (up >= 0 ? '▲ +' : '▼ ') + up.toFixed(1) + '% ' + ctrlLabel + '</div>';
   }
 
   let confHtml = '';
