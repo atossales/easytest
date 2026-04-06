@@ -2002,21 +2002,13 @@ async function openEditor(testId, varId, varName) {
   }
   var detectedFonts = Object.keys(fontSet);
 
-  // Build canvasCss: force page background so GrapesJS doesn't override it
+  // canvasCss: ONLY selection outlines — do NOT inject layout CSS here (breaks the page)
+  // The original page CSS goes through canvas.styles + protectedCss, not canvasCss
   var forcedBgCss = pageBackground && pageBackground !== 'transparent'
-    ? 'body { background: ' + pageBackground + ' !important; }\n'
+    ? 'html,body { background: ' + pageBackground + ' !important; }\n'
     : '';
 
-  // Carry over <html> and <body> inline styles
-  var bodyStyle = (bodyEl && bodyEl.getAttribute('style')) || '';
-  var htmlStyle = (htmlEl && htmlEl.getAttribute('style')) || '';
-  var wrapperCss = '';
-  if (htmlStyle) wrapperCss += 'html { ' + htmlStyle + ' }\n';
-  if (bodyStyle) wrapperCss += 'body { ' + bodyStyle + ' }\n';
-  wrapperCss += '* { box-sizing: border-box; }\n';
-  inlineStyles = wrapperCss + inlineStyles;
-
-  // Body content
+  // Body content — pure innerHTML, no modifications
   var bodyHtml = bodyEl ? bodyEl.innerHTML : data.html;
 
   // Resolve the plugin: CDN exposes window["gjs-blocks-basic"] (with hyphen), not grapesjsBlocksBasic
@@ -2029,12 +2021,14 @@ async function openEditor(testId, varId, varName) {
     fromElement: false,
     storageManager: false,
     components: bodyHtml,
-    style: inlineStyles,
+    // protectedCss: GrapesJS renders this CSS but never modifies or removes it
+    // This keeps the original page styles intact
+    protectedCss: inlineStyles,
     canvas: {
-      styles: extCss,  // load external stylesheets inside the iframe (now absolute URLs)
+      styles: extCss,  // external stylesheets loaded inside the iframe (absolute URLs)
       scripts: [],
     },
-    // Force page background and editor selection styles
+    // canvasCss: only injected AFTER all page CSS — just outlines + background fix
     canvasCss: forcedBgCss + '.gjs-selected { outline: 3px solid #00C48C !important; outline-offset:2px; } .gjs-hovered { outline: 2px dashed #00C48C88 !important; }',
     plugins: _gjsPlugin ? [_gjsPlugin] : [],
     pluginsOpts: {},
