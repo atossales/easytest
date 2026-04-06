@@ -10,7 +10,15 @@ function safeRange(r) {
   return isNaN(n) ? null : n;
 }
 
-function dateFilter(range, alias = 'created_at') {
+// Supports: range (days), OR start+end (YYYY-MM-DD)
+function dateFilter(range, alias = 'created_at', start = null, end = null) {
+  if (start && end) {
+    // Validate format to prevent injection
+    const re = /^\d{4}-\d{2}-\d{2}$/;
+    if (re.test(start) && re.test(end)) {
+      return `AND DATE(${alias}) BETWEEN '${start}' AND '${end}'`;
+    }
+  }
   const n = safeRange(range);
   return n ? `AND ${alias} >= datetime('now','-${n} days')` : '';
 }
@@ -21,7 +29,7 @@ const NO_BOT = 'AND COALESCE(is_bot, 0) = 0';
 // GET /api/reports
 router.get('/', (req, res) => {
   const db   = getDb();
-  const df   = dateFilter(req.query.range || '30', 'i.created_at');
+  const df   = dateFilter(req.query.range || '30', 'i.created_at', req.query.start, req.query.end);
   const tests = db.prepare('SELECT * FROM tests ORDER BY created_at DESC').all();
 
   const overview = tests.map(t => {
@@ -53,8 +61,9 @@ router.get('/:id', (req, res) => {
   const db    = getDb();
   const { id } = req.params;
   const range = req.query.range || '30';
-  const df    = dateFilter(range);
-  const cdf   = dateFilter(range, 'i.created_at');
+  const { start, end } = req.query;
+  const df    = dateFilter(range, 'created_at', start, end);
+  const cdf   = dateFilter(range, 'i.created_at', start, end);
 
   const test = db.prepare('SELECT * FROM tests WHERE id = ?').get(id);
   if (!test) return res.status(404).json({ error: 'Não encontrado' });
