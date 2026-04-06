@@ -32,17 +32,21 @@ function getEvent(body) {
 }
 
 // Extract sale amount in cents from The Members payload
+// The Members sends amounts in BRL (reais), e.g. 97.00 for R$97
+// We multiply by 100 to convert to cents
 function extractRevenueCents(body) {
-  // transaction.approved: data.order.transaction.amount (already in cents)
+  const toC = v => (v > 0 ? Math.round(parseFloat(v) * 100) : 0);
+
+  // transaction.approved: data.order.transaction.amount (in BRL)
   const fromTx = body?.data?.order?.transaction?.amount ||
                  body?.data?.order?.transaction?.total_amount;
-  if (fromTx > 0) return fromTx;
-  // release.access: data.order.total
+  if (fromTx > 0) return toC(fromTx);
+  // release.access: data.order.total (in BRL)
   const fromOrder = body?.data?.order?.total || body?.data?.total;
-  if (fromOrder > 0) return fromOrder;
+  if (fromOrder > 0) return toC(fromOrder);
   // payload wrapper
   const fromPayload = body?.payload?.data?.transaction?.amount;
-  if (fromPayload > 0) return fromPayload;
+  if (fromPayload > 0) return toC(fromPayload);
   return 0;
 }
 
@@ -198,6 +202,25 @@ router.get('/conversion', (req, res) => {
   }
 
   res.json({ ok: true, converted });
+});
+
+// ── GET /api/webhook/debug-revenue ──────────────────────────────────────────
+// Temporary diagnostic: shows last 20 conversions with revenue stored in DB
+router.get('/debug-revenue', (req, res) => {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT i.id, i.test_id, t.name AS test_name, i.variation_id,
+           i.client_id, i.revenue_cents, i.created_at
+    FROM interactions i
+    JOIN tests t ON t.id = i.test_id
+    WHERE i.type = 'conversion'
+    ORDER BY i.created_at DESC LIMIT 20
+  `).all();
+  res.json({ count: rows.length, conversions: rows.map(r => ({
+    ...r,
+    revenue_brl: (r.revenue_cents / 100).toFixed(2),
+    client_id: r.client_id ? r.client_id.slice(0, 8) + '...' : null,
+  })) });
 });
 
 module.exports = router;
