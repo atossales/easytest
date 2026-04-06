@@ -29,47 +29,60 @@ function parseTime(str) {
 
 // ── Core report builder ────────────────────────────────────────────────────
 
-async function buildReportText(period) {
+// days: 1 = hoje, 3 = últimos 3 dias, 7 = últimos 7 dias, 30 = últimos 30 dias
+async function buildReportText(period, days) {
   const db = getDb();
-
-  // Load custom message template (or use default)
   const template = getSetting('wa_message_template') || null;
 
-  // Use BRT (UTC-3) for "today" date boundaries
+  // Normalize days (default 1 = today in BRT)
+  const d = parseInt(days) || 1;
+
+  // Date filter: day boundary in BRT for d=1, range for d>1
+  const dateFilter = d === 1
+    ? `DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))`
+    : `datetime(created_at,'-3 hours') >= datetime('now','-3 hours','-${d} days')`;
+
+  // Variation filter uses same range
+  const varDateFilter = d === 1
+    ? `DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))`
+    : `datetime(created_at,'-3 hours') >= datetime('now','-3 hours','-${d} days')`;
+
   const tests = db.prepare(`
     SELECT t.id, t.name,
       (SELECT COUNT(*) FROM interactions WHERE test_id=t.id AND type='view'
-        AND DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))) AS views_today,
+        AND ${dateFilter}) AS views_period,
       (SELECT COUNT(*) FROM interactions WHERE test_id=t.id AND type='conversion'
-        AND DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))) AS conv_today,
+        AND ${dateFilter}) AS conv_period,
       (SELECT COUNT(*) FROM interactions WHERE test_id=t.id AND type='view')       AS views_total,
       (SELECT COUNT(*) FROM interactions WHERE test_id=t.id AND type='conversion') AS conv_total,
       (SELECT COALESCE(SUM(revenue_cents),0) FROM interactions WHERE test_id=t.id AND type='conversion'
-        AND DATE(datetime(created_at,'-3 hours')) = DATE(datetime('now','-3 hours'))) AS rev_today,
+        AND ${dateFilter}) AS rev_period,
       (SELECT COALESCE(SUM(revenue_cents),0) FROM interactions WHERE test_id=t.id AND type='conversion') AS rev_total
     FROM tests t WHERE t.active = 1
   `).all();
 
-  const totalViewsToday = tests.reduce((s, t) => s + t.views_today, 0);
-  const totalConvToday  = tests.reduce((s, t) => s + t.conv_today, 0);
-  const totalRevToday   = tests.reduce((s, t) => s + t.rev_today, 0);
-  const totalRevAll     = tests.reduce((s, t) => s + t.rev_total, 0);
+  const totalViewsPeriod = tests.reduce((s, t) => s + t.views_period, 0);
+  const totalConvPeriod  = tests.reduce((s, t) => s + t.conv_period, 0);
+  const totalRevPeriod   = tests.reduce((s, t) => s + t.rev_period, 0);
+  const totalRevAll      = tests.reduce((s, t) => s + t.rev_total, 0);
 
-  const crToday = totalViewsToday > 0 ? (totalConvToday / totalViewsToday * 100).toFixed(2) : '0.00';
-  const now     = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const crPeriod = totalViewsPeriod > 0 ? (totalConvPeriod / totalViewsPeriod * 100).toFixed(2) : '0.00';
+  const now      = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
+  const periodLabel = d === 1 ? 'Hoje' : `Últimos ${d} dias`;
   const medals = ['🥇', '🥈', '🥉'];
 
-  // Per-test: top 3 variations ranked by CR (total), no per-variation revenue
+  // Per-test: top 3 variations ranked by CR in the selected period
   const variationLines = tests.map(t => {
     const vars = db.prepare(`
       SELECT v.name,
-        (SELECT COUNT(*) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='view') AS views,
-        (SELECT COUNT(*) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='conversion') AS conv
+        (SELECT COUNT(*) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='view'
+          AND ${varDateFilter}) AS views,
+        (SELECT COUNT(*) FROM interactions WHERE test_id=? AND variation_id=v.id AND type='conversion'
+          AND ${varDateFilter}) AS conv
       FROM variations v WHERE v.test_id=? AND COALESCE(v.active,1)=1
     `).all(t.id, t.id, t.id);
 
-    // Sort by CR descending
     vars.sort((a, b) => {
       const crA = a.views > 0 ? a.conv / a.views : 0;
       const crB = b.views > 0 ? b.conv / b.views : 0;
@@ -81,52 +94,48 @@ async function buildReportText(period) {
       return `${medals[i]} *${v.name}*: *${cr}% CR* (${v.conv} conv / ${v.views} vis)`;
     }).join('\n');
 
-    const crT = t.views_total > 0 ? (t.conv_total / t.views_total * 100).toFixed(1) : '0.0';
-    return `🔬 *${t.name}* — CR geral: *${crT}%*\n${top3}`;
+    const crT = t.views_period > 0 ? (t.conv_period / t.views_period * 100).toFixed(1) : '0.0';
+    return `🔬 *${t.name}* — CR: *${crT}%*\n${top3}`;
   }).join('\n\n');
 
   const fmtBRL = cents => `R$ ${(cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
-  // If custom template exists, use it directly (no AI)
+  // Custom template
   if (template && !template.includes('{{AI}}')) {
     return template
       .replace(/\{\{data\}\}/g, now)
-      .replace(/\{\{periodo\}\}/g, period)
-      .replace(/\{\{views_hoje\}\}/g, totalViewsToday)
-      .replace(/\{\{conv_hoje\}\}/g, totalConvToday)
-      .replace(/\{\{cr_hoje\}\}/g, crToday)
-      .replace(/\{\{receita_hoje\}\}/g, fmtBRL(totalRevToday))
+      .replace(/\{\{periodo\}\}/g, periodLabel)
+      .replace(/\{\{views_hoje\}\}/g, totalViewsPeriod)
+      .replace(/\{\{conv_hoje\}\}/g, totalConvPeriod)
+      .replace(/\{\{cr_hoje\}\}/g, crPeriod)
+      .replace(/\{\{receita_hoje\}\}/g, fmtBRL(totalRevPeriod))
       .replace(/\{\{receita_total\}\}/g, fmtBRL(totalRevAll))
       .replace(/\{\{testes\}\}/g, variationLines);
   }
 
   const divider = '━━━━━━━━━━━━━━━';
-  const periodLabel = period === 'morning' ? '🌅 Manhã' : '🌙 Noite';
+  const timeLabel = period === 'morning' ? '🌅 Manhã' : period === 'evening' ? '🌙 Noite' : '📊';
 
-  // Build clean structured summary
-  const revHojeStr   = totalRevToday > 0 ? `\n💰 Receita hoje:    *${fmtBRL(totalRevToday)}*` : '';
-  const revTotalStr  = totalRevAll   > 0 ? `\n💎 Receita total:   *${fmtBRL(totalRevAll)}*`  : '';
+  const revPeriodStr = totalRevPeriod > 0 ? `\n💰 Receita (${periodLabel.toLowerCase()}): *${fmtBRL(totalRevPeriod)}*` : '';
+  const revTotalStr  = totalRevAll   > 0 ? `\n💎 Receita total:   *${fmtBRL(totalRevAll)}*` : '';
 
   const summary = [
     `📈 *Relatório EasyTest*`,
-    `${periodLabel} de ${now}`,
+    `${timeLabel} ${now} — ${periodLabel}`,
     divider,
-    `👁  Visitas hoje:    *${totalViewsToday}*`,
-    `✅  Conversões hoje: *${totalConvToday}*`,
-    `📊  Taxa hoje:       *${crToday}%*` + revHojeStr + revTotalStr,
+    `👁  Visitas:     *${totalViewsPeriod}*`,
+    `✅  Conversões: *${totalConvPeriod}*`,
+    `📊  Taxa CR:    *${crPeriod}%*` + revPeriodStr + revTotalStr,
     divider,
     variationLines,
     divider,
   ].join('\n');
 
-  // If template contains {{AI}}, call Gemini for a short insight paragraph
   if (template && template.includes('{{AI}}') && process.env.GEMINI_API_KEY) {
     try {
-      const aiPrompt = `Dados do relatório A/B:\n${summary}\n\nDê um parágrafo curto (3-4 frases, tom direto) com o principal insight do dia e a próxima ação recomendada. Responda em português brasileiro, sem formatação markdown.`;
+      const aiPrompt = `Dados do relatório A/B (${periodLabel}):\n${summary}\n\nDê um parágrafo curto (3-4 frases, tom direto) com o principal insight e a próxima ação recomendada. Responda em português brasileiro, sem formatação markdown.`;
       const insight  = await callGemini(aiPrompt);
-      return template
-        .replace(/\{\{resumo\}\}/g, summary)
-        .replace(/\{\{AI\}\}/g, insight);
+      return template.replace(/\{\{resumo\}\}/g, summary).replace(/\{\{AI\}\}/g, insight);
     } catch (e) {
       logger.warn('Gemini insight failed for WhatsApp report', { msg: e.message });
     }
@@ -137,7 +146,7 @@ async function buildReportText(period) {
 
 // ── Send to all configured numbers ────────────────────────────────────────
 
-async function sendDailyReport(period) {
+async function sendDailyReport(period, days) {
   const nums = [
     getSetting('wa_number_1'),
     getSetting('wa_number_2'),
@@ -150,7 +159,7 @@ async function sendDailyReport(period) {
 
   let text;
   try {
-    text = await buildReportText(period);
+    text = await buildReportText(period, days || 1);
   } catch (e) {
     logger.error('Daily report: failed to build text', { msg: e.message });
     return;

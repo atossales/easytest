@@ -36,14 +36,14 @@ router.post('/config', express.json(), (req, res) => {
 });
 
 // POST /api/whatsapp/test-send
-// Body: { period: 'morning'|'evening', number?: '5511...' }
+// Body: { period: 'morning'|'evening', number?: '5511...', days?: 1|3|7|30 }
 router.post('/test-send', express.json(), async (req, res) => {
-  const { period, number } = req.body || {};
+  const { period, number, days } = req.body || {};
   const target = number || getSetting('wa_number_1');
   if (!target) return res.status(400).json({ error: 'Número não configurado' });
 
   try {
-    const text = await buildReportText(period || 'morning');
+    const text = await buildReportText(period || 'morning', days || 1);
     const r    = await sendMessage(target, text);
     res.json({ ok: r.ok, detail: r });
   } catch (e) {
@@ -53,9 +53,10 @@ router.post('/test-send', express.json(), async (req, res) => {
 });
 
 // POST /api/whatsapp/send-now — force send to all numbers
+// Body: { period?: string, days?: 1|3|7|30 }
 router.post('/send-now', express.json(), async (req, res) => {
   try {
-    await sendDailyReport(req.body?.period || 'manual');
+    await sendDailyReport(req.body?.period || 'manual', req.body?.days || 1);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -63,9 +64,10 @@ router.post('/send-now', express.json(), async (req, res) => {
 });
 
 // GET /api/whatsapp/preview — preview the report message text
+// Query: ?period=morning&days=7
 router.get('/preview', async (req, res) => {
   try {
-    const text = await buildReportText(req.query.period || 'morning');
+    const text = await buildReportText(req.query.period || 'morning', req.query.days || 1);
     res.json({ ok: true, text });
   } catch (e) {
     res.status(500).json({ error: e.message });

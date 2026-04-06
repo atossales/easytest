@@ -1444,41 +1444,85 @@ async function delTest(id) {
 // ══════════════════════════════════════════════════
 async function rAI() {
   const ts = await api('/api/tests');
+  const periodBtns = [
+    { v: '1',  l: 'Hoje' },
+    { v: '3',  l: '3 dias' },
+    { v: '7',  l: '7 dias' },
+    { v: '30', l: '30 dias' },
+  ].map(function(b, i) {
+    return '<button class="dr-btn' + (i === 2 ? ' dr-active' : '') + '" id="ai-days-' + b.v + '" onclick="selectAiDays(\'' + b.v + '\')">' + b.l + '</button>';
+  }).join('');
+
   document.getElementById('m').innerHTML =
     '<div class="ph"><div><h1>Agente IA</h1><div class="sub">Análise com Gemini Flash — tráfego pago + UX</div></div></div>' +
-    '<div style="max-width:680px">' +
+    '<div style="max-width:720px">' +
     '<div class="ai-box" style="margin-bottom:14px">' +
     '<h3>🤖 Análise por Teste</h3>' +
-    '<div class="ai-sub">Selecione um teste e o período para obter diagnóstico, ações prioritárias e alertas.</div>' +
+    '<div class="ai-sub">Selecione o teste e o período para diagnóstico, ações prioritárias e alertas.</div>' +
     (ts.length
-      ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">' +
+      ? '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">' +
         '<div style="flex:1;min-width:180px"><label style="font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Teste</label>' +
         '<select class="fc" id="ai-test-sel" style="background:#111;color:#fff;border-color:#333">' +
         ts.map(function(t) { return '<option value="' + t.id + '">' + esc(t.name) + '</option>'; }).join('') +
         '</select></div>' +
         '<div><label style="font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Período</label>' +
-        '<select class="fc" id="ai-range-sel" style="background:#111;color:#fff;border-color:#333">' +
-        '<option value="7">7 dias</option><option value="14">14 dias</option><option value="30" selected>30 dias</option><option value="0">Todo período</option>' +
-        '</select></div>' +
-        '</div>' +
-        '<button class="btn bp" onclick="runAiAnalysisPage()">Analisar agora</button>'
-      : '<div style="color:#aaa;font-size:12px;padding:8px 0">Nenhum teste disponível. Crie um teste primeiro.</div>') +
+        '<div class="dr-group" style="background:rgba(255,255,255,.06);border-color:#333" id="ai-days-group">' + periodBtns + '</div>' +
+        '<input type="hidden" id="ai-days-val" value="7">' +
+        '</div></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<button class="btn bp" onclick="runAiAnalysisPage()">🔍 Analisar agora</button>' +
+        '<button class="btn bs" id="ai-wa-btn" style="display:none" onclick="sendAiReportWA()">📲 Enviar via WhatsApp</button>' +
+        '</div>'
+      : '<div style="color:#aaa;font-size:12px;padding:8px 0">Nenhum teste disponível.</div>') +
     '<div id="ai-page-out" style="margin-top:14px"></div>' +
     '</div>' +
+
+    '<div class="card">' +
+    '<div class="set-hd"><h3>📊 Relatório WhatsApp Avulso</h3></div>' +
+    '<p class="set-desc">Gere e envie um relatório para todos os números configurados agora, escolhendo o período.</p>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">' +
+    '<div class="dr-group" id="rpt-days-group">' +
+    [['1','Hoje'],['3','3 dias'],['7','7 dias'],['30','30 dias']].map(function(b, i) {
+      return '<button class="dr-btn' + (i===0?' dr-active':'') + '" id="rpt-days-' + b[0] + '" onclick="selectRptDays(\'' + b[0] + '\')">' + b[1] + '</button>';
+    }).join('') +
+    '</div>' +
+    '<input type="hidden" id="rpt-days-val" value="1">' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button class="btn bp" onclick="sendWaNow()">📲 Enviar relatório agora</button>' +
+    '<button class="btn bs" onclick="previewWaDays()">👁 Preview</button>' +
+    '</div>' +
+    '<div id="rpt-preview" style="margin-top:12px"></div>' +
+    '</div>' +
+
     '<div class="card">' +
     '<div class="set-hd"><h3>Prompt de Treinamento</h3><span class="set-tag">Gemini Flash</span></div>' +
-    '<p class="set-desc">Personalize como o agente analisa seus dados — contexto do negócio, tom, foco e instruções específicas.</p>' +
+    '<p class="set-desc">Personalize como o agente analisa seus dados — contexto do negócio, tom, foco e instruções.</p>' +
     '<button class="btn bs" onclick="go(\'settings\')">⚙️ Editar nas Configurações</button>' +
     '</div>' +
     '</div>';
 }
 
+function selectAiDays(v) {
+  document.getElementById('ai-days-val').value = v;
+  document.querySelectorAll('#ai-days-group .dr-btn').forEach(function(b) { b.classList.remove('dr-active'); });
+  document.getElementById('ai-days-' + v).classList.add('dr-active');
+}
+
+function selectRptDays(v) {
+  document.getElementById('rpt-days-val').value = v;
+  document.querySelectorAll('#rpt-days-group .dr-btn').forEach(function(b) { b.classList.remove('dr-active'); });
+  document.getElementById('rpt-days-' + v).classList.add('dr-active');
+}
+
 async function runAiAnalysisPage() {
-  const sel = document.getElementById('ai-test-sel');
-  const rng = document.getElementById('ai-range-sel');
-  const out = document.getElementById('ai-page-out');
+  const sel  = document.getElementById('ai-test-sel');
+  const days = document.getElementById('ai-days-val');
+  const out  = document.getElementById('ai-page-out');
+  const waBtn = document.getElementById('ai-wa-btn');
   if (!sel || !out) return;
-  const testId = sel.value, range = rng ? rng.value : '30';
+  const testId = sel.value, range = days ? days.value : '7';
+  if (waBtn) waBtn.style.display = 'none';
   out.innerHTML = '<div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Analisando com Gemini Flash...</span></div>';
   try {
     const d = await api('/api/ai/analyze/' + testId + '?range=' + range);
@@ -1489,9 +1533,38 @@ async function runAiAnalysisPage() {
       .replace(/\n/g, '<br>');
     out.innerHTML = '<div class="ai-out">' + html + '</div>' +
       '<div style="font-size:9px;color:#666;margin-top:8px">Gerado em ' + new Date(d.generated_at).toLocaleString('pt-BR') + (d.has_clarity ? ' · com dados Clarity' : '') + '</div>';
+    if (waBtn) waBtn.style.display = '';
   } catch(e) {
     out.innerHTML = '<div style="color:#FF6B6B;font-size:12px">⚠️ Erro: ' + e.message + '</div>';
   }
+}
+
+async function sendAiReportWA() {
+  const days = document.getElementById('ai-days-val');
+  const d = parseInt(days ? days.value : '7');
+  if (!confirm('Enviar relatório de ' + (d === 1 ? 'hoje' : 'últimos ' + d + ' dias') + ' via WhatsApp para todos os números configurados?')) return;
+  const r = await api('/api/whatsapp/send-now', { method: 'POST', body: { period: 'manual', days: d } });
+  if (r.ok) toast('Relatório enviado via WhatsApp!');
+  else toast('Erro ao enviar: ' + (r.error || 'falha'), true);
+}
+
+async function sendWaNow() {
+  const days = document.getElementById('rpt-days-val');
+  const d = parseInt(days ? days.value : '1');
+  if (!confirm('Enviar relatório de ' + (d === 1 ? 'hoje' : 'últimos ' + d + ' dias') + ' via WhatsApp?')) return;
+  const r = await api('/api/whatsapp/send-now', { method: 'POST', body: { period: 'manual', days: d } });
+  if (r.ok) toast('Relatório enviado!');
+  else toast('Erro: ' + (r.error || 'falha'), true);
+}
+
+async function previewWaDays() {
+  const days = document.getElementById('rpt-days-val');
+  const d = days ? days.value : '1';
+  const box = document.getElementById('rpt-preview');
+  box.innerHTML = '<div style="font-size:11px;color:var(--g5)">Carregando preview...</div>';
+  const r = await api('/api/whatsapp/preview?days=' + d);
+  if (r.error) { box.innerHTML = '<div style="color:var(--rd);font-size:11px">Erro: ' + esc(r.error) + '</div>'; return; }
+  box.innerHTML = '<div style="background:#ECF8F0;border:1px solid #B7E4C7;border-radius:10px;padding:14px;font-size:11.5px;line-height:1.7;white-space:pre-wrap;font-family:\'Courier New\',monospace;max-height:400px;overflow-y:auto">' + esc(r.text) + '</div>';
 }
 
 // ══════════════════════════════════════════════════
@@ -1531,7 +1604,7 @@ async function rMessages() {
 
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
     '<button class="btn bp" onclick="saveWaConfig()">Salvar configuração</button>' +
-    '<button class="btn bs" onclick="previewWaMsg()">👁 Preview</button>' +
+    '<button class="btn bs" onclick="previewWaMsg()">👁 Preview hoje</button>' +
     '<button class="btn bs" onclick="sendWaTest()">📤 Enviar teste</button>' +
     '</div>' +
     '<div id="wa-preview" style="margin-top:12px"></div>' +
