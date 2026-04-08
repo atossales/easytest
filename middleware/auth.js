@@ -35,9 +35,27 @@ function isValidSession(token) {
 // Routes that don't need auth (public visitor-facing)
 const PUBLIC_PREFIXES = ['/t/', '/p/', '/embed.js', '/split.js', '/api/track', '/api/split', '/api/webhook', '/auth/', '/health'];
 
+// Hostnames that are custom domains for tests — bypass auth entirely
+function isCustomDomainHost(req) {
+  const host = req.hostname;
+  // Admin panel hostname (the EasyTest server itself) — never bypass
+  const adminHost = (process.env.SITE_URL || '').replace(/^https?:\/\//, '').split('/')[0];
+  if (!host || host === 'localhost' || host === adminHost) return false;
+  // If not the admin host, check if it's a registered custom domain in the DB
+  try {
+    const { getDb } = require('../lib/database');
+    const db = getDb();
+    const test = db.prepare('SELECT id FROM tests WHERE custom_domain = ?').get(host);
+    return !!test;
+  } catch { return false; }
+}
+
 function requireAuth(req, res, next) {
   const isPublic = PUBLIC_PREFIXES.some(p => req.path.startsWith(p));
   if (isPublic) return next();
+
+  // Custom domain visitors always bypass auth — they're end users, not admins
+  if (isCustomDomainHost(req)) return next();
 
   const token = req.cookies?.[SESSION_COOKIE];
   if (isValidSession(token)) return next();
