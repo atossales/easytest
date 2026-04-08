@@ -360,6 +360,50 @@ tr:hover td{background:#F8F8FC}.tn{font-weight:700;color:var(--bk)}
 .ins-refresh:active{transform:translateY(3px);box-shadow:0 1px 0 #4338ca}
 .ins-refresh:disabled{opacity:.5;cursor:default;transform:none}
 .ins-empty{color:var(--g5);font-size:12px;font-style:italic}
+/* ── Notification Bell ── */
+.nb-wrap{position:relative;display:inline-flex;margin:10px 12px 6px}
+.nb-btn{display:flex;align-items:center;gap:8px;padding:9px 14px;background:#fff;border:2px solid var(--g2);border-radius:14px;box-shadow:0 4px 0 var(--g2),0 8px 20px rgba(0,0,0,.07);cursor:pointer;font-size:13px;font-weight:700;color:var(--bk);width:100%;transition:transform .1s,box-shadow .1s}
+.nb-btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--g2)}
+.nb-btn svg{width:16px;height:16px;stroke:var(--b);stroke-width:2.5;fill:none}
+.nb-badge{position:absolute;top:-6px;right:-6px;background:#EF4444;color:#fff;font-size:10px;font-weight:900;min-width:18px;height:18px;border-radius:20px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #fff;box-shadow:0 2px 0 #B91C1C}
+/* ── Notification Drawer ── */
+#notif-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9990;transition:opacity .25s}
+#notif-backdrop.open{display:block}
+#notif-drawer{position:fixed;top:0;right:0;height:100%;width:min(420px,100vw);background:#fff;border-left:3px solid var(--g1);box-shadow:-8px 0 0 var(--g1),-24px 0 48px rgba(0,0,0,.14);z-index:9991;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+#notif-drawer.open{transform:translateX(0)}
+.nd-head{padding:18px 20px;border-bottom:2px solid var(--g1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff}
+.nd-title{font-size:15px;font-weight:900;color:var(--bk);display:flex;align-items:center;gap:8px}
+.nd-title svg{width:18px;height:18px;stroke:var(--b);stroke-width:2.5;fill:none}
+.nd-actions{display:flex;align-items:center;gap:8px}
+.nd-mark-all{font-size:11px;font-weight:700;color:var(--b);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:8px}
+.nd-mark-all:hover{background:var(--g0)}
+.nd-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--g5);line-height:1;padding:0 4px}
+.nd-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.nd-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--g5);font-size:13px;gap:10px}
+.nd-empty svg{width:40px;height:40px;stroke:var(--g3);stroke-width:1.5;fill:none}
+.nd-footer{padding:14px 16px;border-top:2px solid var(--g1);flex-shrink:0}
+.nd-footer button{width:100%}
+/* Notification item */
+.ni{display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border-radius:14px;border:2px solid var(--g1);cursor:pointer;transition:transform .1s,box-shadow .1s;box-shadow:0 4px 0 var(--g1)}
+.ni:active{transform:translateY(2px);box-shadow:0 2px 0 var(--g1)}
+.ni.unread{background:#EFF6FF;border-color:#BFDBFE;box-shadow:0 4px 0 #BFDBFE}
+.ni.unread.guard{background:#FFFBEB;border-color:#FDE68A;box-shadow:0 4px 0 #FDE68A}
+.ni.unread.stale{background:#FFF7ED;border-color:#FED7AA;box-shadow:0 4px 0 #FED7AA}
+.ni-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--g1)}
+.ni.unread .ni-icon{background:#DBEAFE}
+.ni.unread.guard .ni-icon{background:#FEF3C7}
+.ni.unread.stale .ni-icon{background:#FFEDD5}
+.ni-body{flex:1;min-width:0}
+.ni-title{font-size:12px;font-weight:800;color:var(--bk);margin-bottom:3px}
+.ni.read .ni-title{color:var(--g5)}
+.ni-msg{font-size:11px;color:var(--g5);line-height:1.4}
+.ni-meta{display:flex;align-items:center;gap:6px;margin-top:5px}
+.ni-time{font-size:10px;color:var(--g4);display:flex;align-items:center;gap:3px}
+.ni-time svg{width:10px;height:10px;stroke:currentColor;stroke-width:2.5;fill:none}
+.ni-timer{font-size:10px;font-weight:700;color:#92400E;background:#FEF3C7;padding:2px 7px;border-radius:20px}
+.ni-dot{width:8px;height:8px;border-radius:50%;background:var(--b);flex-shrink:0;margin-top:2px}
+.ni.unread.guard .ni-dot{background:#F59E0B}
+.ni.unread.stale .ni-dot{background:#F97316}
 /* ── Version History Modal ── */
 #ver-overlay{display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.55);align-items:center;justify-content:center}
 #ver-overlay.open{display:flex}
@@ -412,6 +456,30 @@ tr:hover td{background:#F8F8FC}.tn{font-weight:700;color:var(--bk)}
 <body>
 
 <!-- ── Code Editor Overlay ── -->
+<!-- ── Notification Drawer ───────────────────────────────────── -->
+<div id="notif-backdrop" onclick="closeNotifDrawer()"></div>
+<div id="notif-drawer">
+  <div class="nd-head">
+    <span class="nd-title">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Notificações
+    </span>
+    <div class="nd-actions">
+      <button class="nd-mark-all" onclick="markAllNotifsRead()" id="nd-mark-all" style="display:none">Marcar todas como lidas</button>
+      <button class="nd-close" onclick="closeNotifDrawer()">×</button>
+    </div>
+  </div>
+  <div class="nd-body" id="nd-body">
+    <div class="nd-empty">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Carregando notificações…
+    </div>
+  </div>
+  <div class="nd-footer">
+    <button class="btn b-primary" onclick="markAllNotifsRead();closeNotifDrawer()">Marcar todas como lidas e fechar</button>
+  </div>
+</div>
+
 <!-- ── Version History Modal ─────────────────────────────────── -->
 <div id="ver-overlay" onclick="if(event.target===this)closeVersions()">
   <div id="ver-modal">
@@ -463,6 +531,16 @@ tr:hover td{background:#F8F8FC}.tn{font-weight:700;color:var(--bk)}
 
 <aside class="sb">
   <div class="sb-brand"><div class="sb-logo">E</div><span>EasyTest</span></div>
+
+  <!-- Bell notifications -->
+  <div class="nb-wrap">
+    <button class="nb-btn" onclick="openNotifDrawer()" id="nb-btn">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Notificações
+    </button>
+    <span class="nb-badge" id="nb-badge" style="display:none">0</span>
+  </div>
+
   <nav>
     <a onclick="go('dash')" data-p="dash" class="on">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -765,7 +843,7 @@ async function rDash(range) {
     var badge   = x.active
       ? '<span class="badge b-on">Ativo</span>'
       : (x.auto_paused
-        ? '<span class="badge b-guard">⏸ Guard</span>'
+        ? '<span class="badge b-guard">⏸ Guard &nbsp;<span class="guard-timer" style="font-weight:600;font-size:9px">' + timeUntilMidnightBRT() + '</span></span>'
         : '<span class="badge b-off">Pausado</span>');
     return '<tr>' +
       '<td class="tn">' + esc(x.name) + '</td>' +
@@ -838,7 +916,7 @@ async function rTests() {
             '<td class="tn" style="cursor:pointer" onclick="go(\'report\',' + t.id + ')">' + esc(t.name) + '</td>' +
             '<td>' + t.variation_count + '</td><td>' + N(t.total_views) + '</td><td>' + N(t.total_conversions) + '</td>' +
             '<td style="font-weight:800;color:var(--b)">' + (t.total_views > 0 ? ((t.total_conversions/t.total_views)*100).toFixed(1) : '0.0') + '%</td>' +
-            '<td><span class="badge ' + (t.active ? 'b-on' : (t.auto_paused ? 'b-guard' : 'b-off')) + '">' + (t.active ? 'Ativo' : (t.auto_paused ? '⏸ Guard' : 'Off')) + '</span></td>' +
+            '<td><span class="badge ' + (t.active ? 'b-on' : (t.auto_paused ? 'b-guard' : 'b-off')) + '">' + (t.active ? 'Ativo' : (t.auto_paused ? '⏸ Guard &nbsp;<span class="guard-timer" style="font-weight:600;font-size:9px">' + timeUntilMidnightBRT() + '</span>' : 'Off')) + '</span></td>' +
             '<td class="acts"><button class="btn bs bsm" onclick="go(\'report\',' + t.id + ')">Ver</button>' +
             '<button class="btn bs bsm" onclick="rEdit(' + t.id + ')">✏️</button>' +
             '<button class="btn br bsm" onclick="delTest(' + t.id + ')">✕</button></td></tr>';
@@ -1493,6 +1571,134 @@ function buildInsightCard(testId) {
   '</div>';
 }
 
+// ── Notifications ──────────────────────────────────────────────────────────
+
+var _notifs = [];
+var _notifReadIds = new Set(JSON.parse(localStorage.getItem('et_notif_read') || '[]'));
+
+// Time until midnight BRT (= UTC 03:00)
+function timeUntilMidnightBRT() {
+  var now = new Date();
+  var next = new Date();
+  next.setUTCHours(3, 0, 0, 0);
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+  var diff = next - now;
+  var h = Math.floor(diff / 3600000);
+  var m = Math.floor((diff % 3600000) / 60000);
+  var s = Math.floor((diff % 60000) / 1000);
+  return h + 'h ' + String(m).padStart(2,'0') + 'min ' + String(s).padStart(2,'0') + 's';
+}
+
+function _timeAgoNotif(iso) {
+  if (!iso) return '';
+  var diff = Date.now() - new Date(iso).getTime();
+  var m = Math.floor(diff / 60000);
+  if (m < 1) return 'agora mesmo';
+  if (m < 60) return m + ' min atrás';
+  var h = Math.floor(m / 60);
+  if (h < 24) return h + 'h atrás';
+  return Math.floor(h / 24) + 'd atrás';
+}
+
+function _saveReadIds() {
+  localStorage.setItem('et_notif_read', JSON.stringify([..._notifReadIds]));
+}
+
+function _updateBadge() {
+  var unread = _notifs.filter(function(n) { return !_notifReadIds.has(n.id); }).length;
+  var badge = document.getElementById('nb-badge');
+  var markAll = document.getElementById('nd-mark-all');
+  if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none'; }
+  if (markAll) { markAll.style.display = unread > 0 ? 'inline-block' : 'none'; }
+}
+
+function _renderNotifItem(n) {
+  var isRead = _notifReadIds.has(n.id);
+  var cls = 'ni' + (isRead ? ' read' : ' unread') + ' ' + (n.type || '');
+  var timer = n.type === 'guard'
+    ? '<span class="ni-timer" id="ni-timer-' + n.id + '">reset em ' + timeUntilMidnightBRT() + '</span>'
+    : '';
+  var dot = !isRead ? '<span class="ni-dot"></span>' : '';
+  return '<div class="' + cls + '" onclick="markNotifRead(\'' + n.id + '\')" id="ni-' + n.id + '">' +
+    '<div class="ni-icon">' + (n.icon || '🔔') + '</div>' +
+    '<div class="ni-body">' +
+      '<div class="ni-title">' + esc(n.title) + '</div>' +
+      '<div class="ni-msg">' + esc(n.message) + '</div>' +
+      '<div class="ni-meta">' +
+        '<span class="ni-time"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' + _timeAgoNotif(n.time) + '</span>' +
+        timer +
+      '</div>' +
+    '</div>' +
+    dot +
+  '</div>';
+}
+
+function _renderNotifList() {
+  var body = document.getElementById('nd-body');
+  if (!body) return;
+  if (!_notifs.length) {
+    body.innerHTML = '<div class="nd-empty"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Nenhuma notificação</div>';
+    return;
+  }
+  body.innerHTML = _notifs.map(_renderNotifItem).join('');
+  _updateBadge();
+}
+
+function markNotifRead(id) {
+  _notifReadIds.add(id);
+  _saveReadIds();
+  var el = document.getElementById('ni-' + id);
+  if (el) { el.classList.remove('unread'); el.classList.add('read'); var dot = el.querySelector('.ni-dot'); if(dot) dot.remove(); }
+  _updateBadge();
+}
+
+function markAllNotifsRead() {
+  _notifs.forEach(function(n) { _notifReadIds.add(n.id); });
+  _saveReadIds();
+  _renderNotifList();
+}
+
+function openNotifDrawer() {
+  document.getElementById('notif-backdrop').classList.add('open');
+  document.getElementById('notif-drawer').classList.add('open');
+  _renderNotifList();
+}
+
+function closeNotifDrawer() {
+  document.getElementById('notif-backdrop').classList.remove('open');
+  document.getElementById('notif-drawer').classList.remove('open');
+}
+
+async function loadNotifications() {
+  var since = localStorage.getItem('et_last_visit') || '';
+  // Save current visit timestamp for next time
+  localStorage.setItem('et_last_visit', new Date().toISOString());
+  try {
+    var url = '/api/notifications' + (since ? '?since=' + encodeURIComponent(since) : '');
+    var r = await fetch(url);
+    var d = await r.json();
+    _notifs = d.notifications || [];
+    _updateBadge();
+    // Auto-open drawer if there are unread notifications and this is not the first visit
+    if (since && _notifs.some(function(n) { return !_notifReadIds.has(n.id); })) {
+      openNotifDrawer();
+    }
+  } catch(e) { /* silent */ }
+}
+
+// Live countdown timer for guard notifications
+setInterval(function() {
+  _notifs.forEach(function(n) {
+    if (n.type !== 'guard') return;
+    var el = document.getElementById('ni-timer-' + n.id);
+    if (el) el.textContent = 'reset em ' + timeUntilMidnightBRT();
+  });
+  // Also update badges in test cards if visible
+  document.querySelectorAll('.guard-timer').forEach(function(el) {
+    el.textContent = 'reset em ' + timeUntilMidnightBRT();
+  });
+}, 1000);
+
 // ── Version History ────────────────────────────────────────────────────────
 
 var _verTestId = null, _verVarId = null;
@@ -1726,7 +1932,7 @@ async function rMobileTests(filter) {
     return '<div class="tc" onclick="go(\'report\',' + t.id + ')">' +
       '<div class="tc-top">' +
       '<div class="tc-name">' + esc(t.name) + '</div>' +
-      '<span class="badge ' + (t.active ? 'b-on' : (t.auto_paused ? 'b-guard' : 'b-off')) + '">' + (t.active ? 'Ativo' : (t.auto_paused ? '⏸ Guard' : 'Off')) + '</span>' +
+      '<span class="badge ' + (t.active ? 'b-on' : (t.auto_paused ? 'b-guard' : 'b-off')) + '">' + (t.active ? 'Ativo' : (t.auto_paused ? '⏸ Guard &nbsp;<span class="guard-timer" style="font-weight:600;font-size:9px">' + timeUntilMidnightBRT() + '</span>' : 'Off')) + '</span>' +
       '</div>' +
       '<div class="tc-stats">' +
       '<div class="tc-stat"><div class="tsl">Views</div><div class="tsv">' + N(t.total_views) + '</div></div>' +
@@ -2548,6 +2754,7 @@ async function saveEditor() {
 document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('ec').textContent = '<script src="' + O + '/embed.js"><\/script>';
   go('dash');
+  loadNotifications();
 });
 </script>
 </body>
