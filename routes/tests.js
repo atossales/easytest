@@ -255,28 +255,64 @@ router.delete('/:id', (req, res) => {
 });
 
 // DELETE /api/tests/:id/variations/:vid
+// GET /api/tests/:id/variations/:vid/preview — serves raw HTML directly for iframe
+router.get('/:id/variations/:vid/preview', (req, res) => {
+  const db = getDb();
+  const v  = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(req.params.vid, req.params.id);
+  if (!v || !v.file_path) return res.status(404).send('<p>Variação não encontrada</p>');
+  const fp = path.resolve(UPLOADS, path.basename(v.file_path));
+  if (!fp.startsWith(UPLOADS) || !fs.existsSync(fp)) return res.status(404).send('<p>Arquivo não encontrado</p>');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.sendFile(fp);
+});
+
+const HTML_TEMPLATE = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Página</title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+</style>
+</head>
+<body>
+  <!-- Escreva seu HTML aqui -->
+</body>
+</html>`;
+
 // GET /api/tests/:id/variations/:vid/html-content — returns raw HTML for editor
 router.get('/:id/variations/:vid/html-content', (req, res) => {
   const db = getDb();
   const v  = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(req.params.vid, req.params.id);
   if (!v) return res.status(404).json({ error: 'Variação não encontrada' });
-  if (!v.file_path) return res.status(404).json({ error: 'Esta variação não possui arquivo HTML' });
+  if (!v.file_path) return res.json({ ok: true, html: HTML_TEMPLATE, name: v.name, variation_id: v.id, empty: true });
   const fp = path.resolve(UPLOADS, path.basename(v.file_path));
-  if (!fp.startsWith(UPLOADS) || !fs.existsSync(fp)) return res.status(404).json({ error: 'Arquivo não encontrado' });
+  if (!fp.startsWith(UPLOADS) || !fs.existsSync(fp)) return res.json({ ok: true, html: HTML_TEMPLATE, name: v.name, variation_id: v.id, empty: true });
   const html = fs.readFileSync(fp, 'utf8');
   res.json({ ok: true, html, name: v.name, variation_id: v.id });
 });
 
-// PUT /api/tests/:id/variations/:vid/html-content — saves edited HTML
+// PUT /api/tests/:id/variations/:vid/html-content — saves edited HTML (creates file if needed)
 router.put('/:id/variations/:vid/html-content', express.json({ limit: '10mb' }), (req, res) => {
   const db = getDb();
   const v  = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(req.params.vid, req.params.id);
   if (!v) return res.status(404).json({ error: 'Variação não encontrada' });
-  if (!v.file_path) return res.status(400).json({ error: 'Esta variação não possui arquivo HTML para editar' });
-  const fp = path.resolve(UPLOADS, path.basename(v.file_path));
-  if (!fp.startsWith(UPLOADS)) return res.status(403).json({ error: 'Acesso negado' });
   const { html } = req.body;
   if (!html || typeof html !== 'string') return res.status(400).json({ error: 'HTML inválido' });
+
+  let fp;
+  if (v.file_path) {
+    fp = path.resolve(UPLOADS, path.basename(v.file_path));
+    if (!fp.startsWith(UPLOADS)) return res.status(403).json({ error: 'Acesso negado' });
+  } else {
+    // First save — create a new file and register it in the DB
+    if (!fs.existsSync(UPLOADS)) fs.mkdirSync(UPLOADS, { recursive: true });
+    const filename = Date.now() + '-' + Math.round(Math.random() * 1e6) + '-variation-' + v.id + '.html';
+    fp = path.join(UPLOADS, filename);
+    db.prepare('UPDATE variations SET file_path = ?, file_original = ? WHERE id = ?').run(fp, filename, v.id);
+  }
+
   try {
     fs.writeFileSync(fp, html, 'utf8');
     logger.info('Variation HTML saved via editor', { testId: req.params.id, varId: req.params.vid });

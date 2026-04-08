@@ -6,9 +6,7 @@
 <title>EasyTest</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/grapesjs@0.21.13/dist/css/grapes.min.css">
-<script src="https://unpkg.com/grapesjs@0.21.13/dist/grapes.min.js"></script>
-<script src="https://unpkg.com/grapesjs-blocks-basic@1.0.2/dist/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.47.0/min/vs/loader.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--b:#0065FF;--bd:#0050CC;--bl:#E8F0FF;--bk:#0A0A0A;--g7:#404040;--g5:#6B6B6B;--g3:#B0B0B0;--g2:#D4D4D4;--g1:#F0F0F0;--g0:#F8F8F8;--w:#FFF;--gn:#00C48C;--gl:#E6FAF3;--rd:#FF4D4D;--rl:#FFECEC;--or:#FFB84D;--pu:#A855F7;--r:12px;--s:8px}
@@ -255,51 +253,61 @@ tr:hover td{background:var(--g0)}.tn{font-weight:700;color:var(--bk)}
   .mob-nav a svg{width:20px;height:20px}
   .mn{padding-bottom:72px}
 }
-/* ── Visual Editor (GrapesJS) ── */
-#editor-overlay{display:none;position:fixed;inset:0;background:#1a1a2e;z-index:9999;flex-direction:column}
+/* ── Code Editor ── */
+#editor-overlay{display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;background:#0d0d1a}
 #editor-overlay.open{display:flex}
-#editor-topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#0f0f1a;border-bottom:1px solid #2a2a4a;flex-shrink:0}
+#editor-topbar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#0a0a14;border-bottom:1px solid #1e1e3a;flex-shrink:0;flex-wrap:wrap}
 #editor-topbar .et-title{font-size:13px;font-weight:800;color:#fff;margin-right:auto}
 #editor-topbar .et-sub{font-size:11px;color:#888;margin-left:4px;font-weight:400}
-#editor-topbar .et-btn{padding:7px 16px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit}
+#editor-topbar .et-btn{padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;transition:opacity .15s}
 #editor-topbar .et-save{background:#00C48C;color:#fff}
-#editor-topbar .et-save:hover{background:#00a97a}
+#editor-topbar .et-save:hover{opacity:.85}
 #editor-topbar .et-discard{background:#2a2a4a;color:#aaa}
-#editor-topbar .et-discard:hover{background:#3a3a5a;color:#fff}
+#editor-topbar .et-discard:hover{color:#fff}
 #editor-topbar .et-saving{background:#555;color:#fff;cursor:default}
-#editor-wrap{flex:1;overflow:hidden}
-#gjs{height:100%}
-/* Override GrapesJS dark theme to match our brand */
-.gjs-one-bg{background:#1a1a2e}
-.gjs-two-bg{background:#0f0f1a}
-.gjs-three-bg{background:#2a2a4a}
-.gjs-four-color{color:#00C48C}
-.gjs-four-color-h:hover{color:#00C48C}
-/* Style panel layout */
+#editor-topbar .et-badge{font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #2a2a4a;color:#666;font-weight:600;font-family:inherit}
 #editor-wrap{display:flex;flex:1;overflow:hidden}
-#editor-wrap #gjs{flex:1;height:100%;overflow:hidden}
-.panel__right{width:260px;background:#0f0f1a;border-left:1px solid #2a2a4a;overflow-y:auto;flex-shrink:0}
-.styles-container{padding:8px 0}
-.styles-container .gjs-sm-sector-title{padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#aaa;cursor:pointer;border-bottom:1px solid #2a2a4a;background:#1a1a2e}
-.styles-container .gjs-sm-properties{padding:8px 12px}
-.styles-container .gjs-sm-field input,.styles-container .gjs-sm-field select{background:#2a2a4a;color:#fff;border:1px solid #3a3a5a;border-radius:4px;padding:3px 6px;font-size:11px;font-family:inherit;width:100%}
-.styles-container .gjs-sm-label{font-size:10px;color:#888;margin-bottom:4px;display:block}
-.panel__right:empty::after{content:'← Selecione um elemento para editar seus estilos';display:block;padding:20px 14px;font-size:11px;color:#555;line-height:1.6}
+/* Code pane */
+#editor-code-pane{flex:1;display:flex;flex-direction:column;border-right:1px solid #1e1e3a;min-width:0}
+#editor-code-pane .ep-head{padding:6px 14px;background:#0a0a14;border-bottom:1px solid #1e1e3a;font-size:10px;font-weight:800;color:#555;text-transform:uppercase;letter-spacing:.6px;flex-shrink:0}
+#monaco-container{flex:1;overflow:hidden}
+/* Preview pane */
+#editor-preview-pane{flex:1;display:flex;flex-direction:column;min-width:0}
+#editor-preview-pane .ep-head{padding:6px 14px;background:#0a0a14;border-bottom:1px solid #1e1e3a;font-size:10px;font-weight:800;color:#555;text-transform:uppercase;letter-spacing:.6px;flex-shrink:0;display:flex;align-items:center;gap:8px}
+#editor-preview-pane .ep-head span{flex:1}
+#editor-preview-pane .ep-head .ep-status{font-size:10px;font-weight:600;color:#00C48C;opacity:0;transition:opacity .3s}
+#editor-preview-pane .ep-head .ep-status.show{opacity:1}
+#editor-frame{flex:1;border:none;width:100%;height:100%;display:block;background:#fff}
+.et-devbtn{padding:4px 9px;border-radius:6px;border:1px solid #2a2a4a;background:transparent;color:#666;cursor:pointer;font-size:12px;font-family:inherit;transition:all .15s}
+.et-devbtn:hover,.et-devbtn.active{background:#2a2a4a;color:#fff}
 </style>
 </head>
 <body>
 
-<!-- ── Visual Editor Overlay ── -->
+<!-- ── Code Editor Overlay ── -->
 <div id="editor-overlay">
   <div id="editor-topbar">
-    <span id="editor-title" class="et-title">Editor Visual<span class="et-sub"></span></span>
+    <span id="editor-title" class="et-title">Editor de Código<span class="et-sub"></span></span>
+    <span class="et-badge">HTML</span>
+    <div style="display:flex;gap:4px">
+      <button class="et-devbtn active" id="edev-desktop" onclick="editorDevice('desktop')" title="Desktop">🖥</button>
+      <button class="et-devbtn" id="edev-tablet" onclick="editorDevice('tablet')" title="Tablet">📱</button>
+      <button class="et-devbtn" id="edev-mobile" onclick="editorDevice('mobile')" title="Mobile">📲</button>
+    </div>
     <button class="et-btn et-discard" onclick="closeEditor()">✕ Sair sem salvar</button>
     <button class="et-btn et-save" id="editor-save-btn" onclick="saveEditor()">💾 Salvar alterações</button>
   </div>
   <div id="editor-wrap">
-    <div id="gjs"></div>
-    <div class="panel__right">
-      <div class="styles-container"></div>
+    <div id="editor-code-pane">
+      <div class="ep-head">Código HTML</div>
+      <div id="monaco-container"></div>
+    </div>
+    <div id="editor-preview-pane">
+      <div class="ep-head">
+        <span>Preview ao vivo</span>
+        <span id="ep-status" class="ep-status">✓ Atualizado</span>
+      </div>
+      <iframe id="editor-frame" title="Preview" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
     </div>
   </div>
 </div>
@@ -453,6 +461,36 @@ async function rDash(range) {
   var ticket   = (t.total_conversions > 0 && t.total_revenue_cents > 0)
     ? t.total_revenue_cents / t.total_conversions : 0;
 
+  // Taxa geral: total de conversões / total de views (apenas testes ativos)
+  var activeTests  = (tests || []).filter(function(x){ return x.active; });
+  var activeViews  = activeTests.reduce(function(s,x){ return s + (x.views||0); }, 0);
+  var activeConvs  = activeTests.reduce(function(s,x){ return s + (x.conversions||0); }, 0);
+  var overallRate  = activeViews > 0 ? (activeConvs / activeViews * 100) : 0;
+  var overallRateStr = overallRate.toFixed(2);
+
+  // Badge de desempenho baseado em benchmarks de infoprodutos (tráfego misto)
+  // Referência: Unbounce, RD Station, Academy of Mine — páginas de venda direta
+  var convBadge, convBadgeColor, convBenchmarkTip;
+  if (overallRate === 0) {
+    convBadge = 'Sem dados'; convBadgeColor = '#888';
+    convBenchmarkTip = 'Nenhum dado ainda';
+  } else if (overallRate < 0.5) {
+    convBadge = '⚠ Crítico'; convBadgeColor = '#FF4D4D';
+    convBenchmarkTip = 'Abaixo de 0,5% — problema sério na oferta ou tráfego';
+  } else if (overallRate < 1) {
+    convBadge = '↓ Abaixo'; convBadgeColor = '#FF8C00';
+    convBenchmarkTip = '0,5–1% — abaixo da média de mercado (1–3%)';
+  } else if (overallRate < 3) {
+    convBadge = '✓ Na média'; convBadgeColor = '#0065FF';
+    convBenchmarkTip = '1–3% — padrão de mercado para infoprodutos';
+  } else if (overallRate < 5) {
+    convBadge = '↑ Boa'; convBadgeColor = '#00A97F';
+    convBenchmarkTip = '3–5% — acima da média, página bem otimizada';
+  } else {
+    convBadge = '🚀 Excelente'; convBadgeColor = '#00C48C';
+    convBenchmarkTip = 'Acima de 5% — alta performance (top 10% do mercado)';
+  }
+
   var kpiRow = '<div class="kpi-row">' +
     '<div class="kpi kpi-rev">' +
       '<div class="kpi-lbl">💰 Receita Hoje</div>' +
@@ -467,14 +505,19 @@ async function rDash(range) {
       '<div class="kpi-delta">' + N(t.total_conversions) + ' vendas no período</div>' +
     '</div>' +
     '<div class="kpi">' +
-      '<div class="kpi-lbl">🎯 Ticket Médio</div>' +
-      '<div class="kpi-val">' + (ticket > 0 ? fmtR(ticket) : '—') + '</div>' +
-      '<div class="kpi-delta">taxa geral ' + (t.overall_rate || '0.00') + '%</div>' +
+      '<div class="kpi-lbl">🎯 Taxa de Conversão' +
+        ' <span style="font-size:9px;font-weight:600;color:#888;text-transform:none;letter-spacing:0">(testes ativos)</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:baseline;gap:8px">' +
+        '<div class="kpi-val">' + overallRateStr + '%</div>' +
+        '<span title="' + convBenchmarkTip + '" style="font-size:10px;font-weight:700;color:' + convBadgeColor + ';cursor:default;white-space:nowrap">' + convBadge + '</span>' +
+      '</div>' +
+      '<div class="kpi-delta" title="' + convBenchmarkTip + '">' + convBenchmarkTip + '</div>' +
     '</div>' +
     '<div class="kpi">' +
-      '<div class="kpi-lbl">👁 Visitantes 30d</div>' +
-      '<div class="kpi-val kpi-blue">' + N(t.total_views) + '</div>' +
-      '<div class="kpi-delta">' + (t.active_tests || 0) + ' testes ativos</div>' +
+      '<div class="kpi-lbl">🎯 Ticket Médio</div>' +
+      '<div class="kpi-val">' + (ticket > 0 ? fmtR(ticket) : '—') + '</div>' +
+      '<div class="kpi-delta">' + N(t.total_conversions) + ' conversões no período</div>' +
     '</div>' +
   '</div>';
 
@@ -1035,8 +1078,8 @@ function buildVarCard(v, i, testId, ctrl, crowned) {
     ? '<a href="/p/' + testId + '/' + v.id + '" target="_blank" style="font-size:9px;color:var(--b);font-weight:700;text-decoration:none;margin-top:6px;display:inline-block">↗ Preview</a>'
     : '';
 
-  const editBtn = v.file_path && testId
-    ? '<button class="btn bs bsm" style="margin-top:6px;width:100%;font-size:11px;font-weight:800" data-edit-test="' + testId + '" data-edit-var="' + v.id + '" data-edit-name="' + esc(v.name) + '" onclick="event.stopPropagation();openEditorFromBtn(this)">✏️ Editar visualmente</button>'
+  const editBtn = testId
+    ? '<button class="btn bs bsm" style="margin-top:6px;width:100%;font-size:11px;font-weight:800" data-edit-test="' + testId + '" data-edit-var="' + v.id + '" data-edit-name="' + esc(v.name) + '" onclick="event.stopPropagation();openEditorFromBtn(this)">✏️ Editar HTML</button>'
     : '';
 
   const isActive   = v.active !== 0;
@@ -1888,42 +1931,38 @@ async function rMessages() {
 }
 
 // ══════════════════════════════════════════════════
-//  VISUAL EDITOR (GrapesJS)
+//  CODE EDITOR (Monaco + Live Preview)
 // ══════════════════════════════════════════════════
-var _editorInstance = null;
-var _editorTestId   = null;
-var _editorVarId    = null;
-var _editorOriginalHtml = null; // full original HTML for head reconstruction
+var _editorTestId    = null;
+var _editorVarId     = null;
+var _monacoInstance  = null;
+var _previewDebounce = null;
+var _editorDevice    = 'desktop';
 
-// Helper: called from data-attribute buttons to avoid inline string escaping issues
+// Widths for device preview
+var _deviceWidths = { desktop: '100%', tablet: '768px', mobile: '390px' };
+
+// Configure Monaco loader to use CDN
+require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.47.0/min/vs' } });
+
 function openEditorFromBtn(btn) {
-  var testId  = btn.getAttribute('data-edit-test');
-  var varId   = btn.getAttribute('data-edit-var');
-  var varName = btn.getAttribute('data-edit-name');
-  openEditor(Number(testId), Number(varId), varName);
-}
-
-// Resolve href to absolute URL using the EasyTest server origin (O)
-function _makeAbsoluteUrl(href) {
-  if (!href) return href;
-  if (/^https?:\/\//i.test(href)) return href; // already absolute
-  if (href.startsWith('//')) return 'https:' + href;
-  if (href.startsWith('/')) return O + href;
-  return O + '/' + href;
+  openEditor(
+    Number(btn.getAttribute('data-edit-test')),
+    Number(btn.getAttribute('data-edit-var')),
+    btn.getAttribute('data-edit-name')
+  );
 }
 
 async function openEditor(testId, varId, varName) {
   _editorTestId = testId;
   _editorVarId  = varId;
 
-  // Show overlay with loading state
-  var overlay = document.getElementById('editor-overlay');
   document.getElementById('editor-title').innerHTML =
-    'Editor Visual <span class="et-sub">— ' + esc(varName || 'Variação') + '</span>';
-  document.getElementById('editor-save-btn').textContent = '💾 Salvar alterações';
-  document.getElementById('editor-save-btn').className = 'et-btn et-save';
-  overlay.classList.add('open');
-  document.getElementById('gjs').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:14px">Carregando editor...</div>';
+    'Editor de Código <span class="et-sub">— ' + esc(varName || 'Variação') + '</span>';
+  var saveBtn = document.getElementById('editor-save-btn');
+  saveBtn.textContent = '💾 Salvar alterações';
+  saveBtn.className = 'et-btn et-save';
+  document.getElementById('editor-overlay').classList.add('open');
 
   // Fetch HTML
   var data;
@@ -1931,295 +1970,113 @@ async function openEditor(testId, varId, varName) {
     data = await api('/api/tests/' + testId + '/variations/' + varId + '/html-content');
   } catch (e) {
     toast('Erro ao carregar HTML: ' + e.message, true);
-    overlay.classList.remove('open');
+    document.getElementById('editor-overlay').classList.remove('open');
     return;
   }
 
-  // Destroy previous instance
-  if (_editorInstance) { try { _editorInstance.destroy(); } catch(_) {} _editorInstance = null; }
-  document.getElementById('gjs').innerHTML = '';
+  // Update preview immediately with the loaded HTML
+  _updatePreview(data.html);
 
-  _editorOriginalHtml = data.html;
-
-  // Parse HTML — extract body content, inline styles and external CSS links
-  // so GrapesJS canvas iframe loads with full styles
-  var parser = new DOMParser();
-  var doc = parser.parseFromString(data.html, 'text/html');
-
-  // External CSS links — convert relative URLs to absolute so the iframe can load them
-  var extCss = [];
-  doc.querySelectorAll('link[rel="stylesheet"]').forEach(function(l) {
-    var href = l.getAttribute('href');
-    if (href) extCss.push(_makeAbsoluteUrl(href));
-  });
-  // Inline <style> blocks
-  var inlineStyles = '';
-  doc.querySelectorAll('style').forEach(function(s) { inlineStyles += s.textContent + '\n'; });
-
-  var bodyEl = doc.body;
-  var htmlEl = doc.documentElement;
-
-  // ── Extract page design tokens for editor pre-configuration ──────────────
-  // 1. Background: try inline style first, then scan <style> rules
-  function extractCssProp(cssText, selector, prop) {
-    var re = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s*\\{([^}]*)\\}', 'gi');
-    var m = re.exec(cssText);
-    if (!m) return null;
-    var pRe = new RegExp(prop + '\\s*:\\s*([^;\\n]+)', 'i');
-    var pm = pRe.exec(m[1]);
-    return pm ? pm[1].trim() : null;
-  }
-  var allCssText = inlineStyles;
-  var bodyBg = (bodyEl && bodyEl.style.backgroundColor) ||
-    extractCssProp(allCssText, 'body', 'background-color') ||
-    extractCssProp(allCssText, 'body', 'background') || '';
-  var htmlBg = (htmlEl && htmlEl.style.backgroundColor) ||
-    extractCssProp(allCssText, 'html', 'background-color') ||
-    extractCssProp(allCssText, 'html', 'background') || '';
-  var pageBackground = bodyBg || htmlBg || 'transparent';
-
-  // 2. Font family: scan body/html/p/:root CSS
-  var bodyFont = (bodyEl && bodyEl.style.fontFamily) ||
-    extractCssProp(allCssText, 'body', 'font-family') ||
-    extractCssProp(allCssText, ':root', 'font-family') || '';
-
-  // 3. Collect all colors from <style> tags for palette (hex + rgb)
-  var colorSet = {};
-  var colorRe = /(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))/g;
-  var cm;
-  while ((cm = colorRe.exec(allCssText)) !== null) { colorSet[cm[1]] = 1; }
-  var palette = Object.keys(colorSet).slice(0, 18); // top 18 colors
-
-  // 4. Collect all font families referenced in stylesheets
-  var fontSet = {};
-  var fontRe = /font-family\s*:\s*([^;]+)/gi;
-  var fm;
-  while ((fm = fontRe.exec(allCssText)) !== null) {
-    fm[1].split(',').forEach(function(f) {
-      var clean = f.trim().replace(/['"]/g,'');
-      if (clean && clean.length > 1 && clean.length < 60) fontSet[clean] = 1;
-    });
-  }
-  var detectedFonts = Object.keys(fontSet);
-
-  // canvasCss: ONLY selection outlines — do NOT inject layout CSS here (breaks the page)
-  // The original page CSS goes through canvas.styles + protectedCss, not canvasCss
-  var forcedBgCss = pageBackground && pageBackground !== 'transparent'
-    ? 'html,body { background: ' + pageBackground + ' !important; }\n'
-    : '';
-
-  // Body content — pure innerHTML, no modifications
-  var bodyHtml = bodyEl ? bodyEl.innerHTML : data.html;
-
-  // Resolve the plugin: CDN exposes window["gjs-blocks-basic"] (with hyphen), not grapesjsBlocksBasic
-  var _gjsPlugin = window['gjs-blocks-basic'] || null;
-
-  // Init GrapesJS
-  _editorInstance = grapesjs.init({
-    container: '#gjs',
-    height: '100%',
-    fromElement: false,
-    storageManager: false,
-    // Start with empty canvas — we inject HTML directly into the iframe on 'load'
-    // to bypass the GrapesJS component parser which drops complex HTML sections
-    components: '',
-    protectedCss: '',
-    canvas: {
-      styles: extCss,  // external stylesheets loaded inside the iframe (absolute URLs)
-      scripts: [],
-    },
-    // canvasCss: only injected AFTER all page CSS — just outlines + background fix
-    canvasCss: forcedBgCss + '.gjs-selected { outline: 3px solid #00C48C !important; outline-offset:2px; } .gjs-hovered { outline: 2px dashed #00C48C88 !important; }',
-    plugins: _gjsPlugin ? [_gjsPlugin] : [],
-    pluginsOpts: {},
-    undoManager: { trackChanges: true },
-    panels: {
-      defaults: [
-        {
-          id: 'panel-switcher',
-          el: '.panel__switcher',
-          buttons: [
-            { id: 'show-style', active: true, label: 'Estilos', command: 'show-styles', togglable: false }
-          ],
-        },
-        {
-          id: 'views',
-          el: '.panel__right',
-          resizable: { tc: 0, cl: 1, cr: 0, bc: 0, minDim: 240, maxDim: 500, keyWidth: 'flex-basis' },
-        },
-      ],
-    },
-    deviceManager: {
-      devices: [
-        { name: 'Desktop', width: '' },
-        { name: 'Tablet',  width: '768px', widthMedia: '768px' },
-        { name: 'Mobile',  width: '375px', widthMedia: '480px' },
-      ],
-    },
-    styleManager: {
-      appendTo: '.styles-container',
-      sectors: [
-        {
-          name: 'Texto', open: true,
-          properties: [
-            {
-              name: 'Fonte', property: 'font-family', type: 'select',
-              list: (detectedFonts.length
-                ? detectedFonts.map(function(f){ return { value: f, name: f }; })
-                : [{value:'sans-serif',name:'Sans-serif'},{value:'serif',name:'Serif'},{value:'monospace',name:'Monospace'}]
-              ),
-            },
-            { name: 'Tamanho', property: 'font-size', type: 'integer', units: ['px','em','rem','%'] },
-            { name: 'Peso', property: 'font-weight', type: 'select',
-              list: [{value:'400',name:'Normal'},{value:'600',name:'Semi-bold'},{value:'700',name:'Bold'},{value:'800',name:'Extra-bold'},{value:'900',name:'Black'}] },
-            { name: 'Cor', property: 'color', type: 'color',
-              colorPicker: { palette: palette.length ? [palette] : undefined } },
-            { name: 'Alinhamento', property: 'text-align', type: 'radio',
-              list: [{value:'left',name:'←'},{value:'center',name:'↔'},{value:'right',name:'→'}] },
-            { name: 'Altura da linha', property: 'line-height', type: 'integer', units: ['','px','em'] },
-          ],
-        },
-        {
-          name: 'Fundo', open: false,
-          properties: [
-            { name: 'Cor de fundo', property: 'background-color', type: 'color',
-              colorPicker: { palette: palette.length ? [palette] : undefined } },
-          ],
-        },
-        { name: 'Espaçamento', open: false, buildProps: ['padding','margin'] },
-        { name: 'Borda', open: false, buildProps: ['border','border-radius'] },
-        { name: 'Tamanho', open: false, buildProps: ['width','max-width','height','display'] },
-      ],
-    },
-  });
-
-  // Inject full HTML directly into the canvas iframe after GrapesJS loads
-  // This bypasses the component parser which drops complex nested HTML
-  _editorInstance.on('load', function() {
-    try {
-      var iframeDoc = _editorInstance.Canvas.getDocument();
-      if (!iframeDoc) return;
-
-      // Inject inline styles + external CSS links into <head>
-      var headEl = iframeDoc.head;
-      // Add inline styles as a <style> tag
-      if (inlineStyles.trim()) {
-        var styleTag = iframeDoc.createElement('style');
-        styleTag.textContent = inlineStyles;
-        headEl.appendChild(styleTag);
-      }
-      // External CSS links are already in canvas.styles but add them too for reliability
-      extCss.forEach(function(href) {
-        // avoid duplicates
-        if (!iframeDoc.querySelector('link[href="' + href + '"]')) {
-          var link = iframeDoc.createElement('link');
-          link.rel = 'stylesheet'; link.href = href;
-          headEl.appendChild(link);
-        }
+  // Init or update Monaco editor
+  require(['vs/editor/editor.main'], function() {
+    var container = document.getElementById('monaco-container');
+    if (_monacoInstance) {
+      _monacoInstance.setValue(data.html);
+      _monacoInstance.setScrollPosition({ scrollTop: 0 });
+    } else {
+      _monacoInstance = monaco.editor.create(container, {
+        value: data.html,
+        language: 'html',
+        theme: 'vs-dark',
+        fontSize: 13,
+        lineHeight: 20,
+        wordWrap: 'on',
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        automaticLayout: true,
+        tabSize: 2,
+        formatOnPaste: false,
+        renderLineHighlight: 'line',
+        smoothScrolling: true,
+        cursorSmoothCaretAnimation: 'on',
+        padding: { top: 12, bottom: 12 },
       });
 
-      // Force background color
-      if (forcedBgCss) {
-        var bgStyle = iframeDoc.createElement('style');
-        bgStyle.textContent = forcedBgCss;
-        headEl.appendChild(bgStyle);
-      }
-
-      // Inject body content directly — no parser, no drops
-      iframeDoc.body.innerHTML = bodyHtml;
-
-      // Transfer body attributes (class, style, data-*) from original
-      if (bodyEl) {
-        Array.from(bodyEl.attributes).forEach(function(attr) {
-          try { iframeDoc.body.setAttribute(attr.name, attr.value); } catch(e) {}
-        });
-      }
-    } catch(e) {
-      console.warn('Editor direct inject failed:', e.message);
+      // Live preview — debounced 600ms after last keystroke
+      _monacoInstance.onDidChangeModelContent(function() {
+        clearTimeout(_previewDebounce);
+        _previewDebounce = setTimeout(function() {
+          _updatePreview(_monacoInstance.getValue());
+        }, 600);
+      });
     }
   });
+}
 
-  // Ensure "show-styles" command reveals the style manager panel
-  _editorInstance.Commands.add('show-styles', {
-    getRowEl: function(editor) { return editor.getContainer().closest('#editor-wrap').querySelector('.panel__right'); },
-    getLayersEl: function(row) { return row.querySelector('.styles-container'); },
-    run: function(editor) {
-      var pn = editor.Panels.getPanel('views');
-      if (pn) pn.set('visible', true);
-      var sm = editor.StyleManager;
-      if (sm && sm.render) sm.render();
-    },
-    stop: function() {},
-  });
+function _updatePreview(html) {
+  var frame = document.getElementById('editor-frame');
+  if (!frame) return;
 
-  // Add device buttons to our topbar
-  var topbar = document.getElementById('editor-topbar');
-  if (!document.getElementById('editor-devices')) {
-    var devBtns = document.createElement('div');
-    devBtns.id = 'editor-devices';
-    devBtns.style.cssText = 'display:flex;gap:4px;margin-right:8px';
-    devBtns.innerHTML =
-      '<button class="et-btn et-discard" style="padding:6px 10px;font-size:11px" onclick="editorDevice(\'Desktop\')" title="Desktop">🖥</button>' +
-      '<button class="et-btn et-discard" style="padding:6px 10px;font-size:11px" onclick="editorDevice(\'Tablet\')" title="Tablet">📱</button>' +
-      '<button class="et-btn et-discard" style="padding:6px 10px;font-size:11px" onclick="editorDevice(\'Mobile\')" title="Mobile">📲</button>';
-    topbar.insertBefore(devBtns, document.getElementById('editor-save-btn').previousSibling);
+  // Apply device width
+  var w = _deviceWidths[_editorDevice] || '100%';
+  frame.style.width  = w;
+  frame.style.maxWidth = w;
+
+  // Use srcdoc for preview — preview doesn't need same-origin access
+  frame.srcdoc = html;
+
+  // Show "Atualizado" indicator briefly
+  var status = document.getElementById('ep-status');
+  if (status) {
+    status.classList.add('show');
+    clearTimeout(status._t);
+    status._t = setTimeout(function() { status.classList.remove('show'); }, 1200);
   }
 }
 
-function editorDevice(name) {
-  if (_editorInstance) _editorInstance.setDevice(name);
+function editorDevice(mode) {
+  _editorDevice = mode;
+  ['desktop','tablet','mobile'].forEach(function(m) {
+    var btn = document.getElementById('edev-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+  // Re-apply current HTML to update preview width
+  if (_monacoInstance) _updatePreview(_monacoInstance.getValue());
 }
 
 function closeEditor() {
-  if (_editorInstance) { try { _editorInstance.destroy(); } catch(_) {} _editorInstance = null; }
-  _editorOriginalHtml = null; // clear to avoid stale HTML on next open
+  clearTimeout(_previewDebounce);
+  if (_monacoInstance) {
+    _monacoInstance.dispose();
+    _monacoInstance = null;
+  }
+  var frame = document.getElementById('editor-frame');
+  if (frame) frame.srcdoc = '';
   document.getElementById('editor-overlay').classList.remove('open');
-  var dev = document.getElementById('editor-devices');
-  if (dev) dev.remove();
+  _editorDevice = 'desktop';
+  ['desktop','tablet','mobile'].forEach(function(m) {
+    var btn = document.getElementById('edev-' + m);
+    if (btn) btn.classList.toggle('active', m === 'desktop');
+  });
 }
 
 async function saveEditor() {
-  if (!_editorInstance) return;
+  if (!_monacoInstance) return;
   var btn = document.getElementById('editor-save-btn');
   btn.textContent = '⏳ Salvando...';
   btn.className = 'et-btn et-saving';
 
-  // Read edited body directly from the canvas iframe (not getHtml() which uses component tree)
-  var editedBody = '';
-  try {
-    var iframeDoc = _editorInstance.Canvas.getDocument();
-    if (iframeDoc && iframeDoc.body) {
-      editedBody = iframeDoc.body.innerHTML;
-    }
-  } catch(e) {}
-  // Fallback to GrapesJS getHtml() if iframe read failed
-  if (!editedBody) editedBody = _editorInstance.getHtml();
-
-  // Reconstruct full HTML: keep original <head> intact, replace <body> content only
-  var full;
-  if (_editorOriginalHtml && _editorOriginalHtml.includes('</head>')) {
-    var headPart = _editorOriginalHtml.substring(0, _editorOriginalHtml.indexOf('</head>')) + '</head>';
-    // Extract body tag and attributes from original
-    var bodyTagMatch = _editorOriginalHtml.match(/<body[^>]*>/i);
-    var bodyOpenTag  = bodyTagMatch ? bodyTagMatch[0] : '<body>';
-    full = headPart + bodyOpenTag + editedBody + '</body></html>';
-  } else {
-    // Fallback: original HTML had no </head> — build a minimal valid document
-    var styleTag = '';
-    full = '<!DOCTYPE html><html><head><meta charset="UTF-8">\n' + styleTag + '</head><body>' + editedBody + '</body></html>';
-  }
+  var html = _monacoInstance.getValue();
 
   try {
     await api('/api/tests/' + _editorTestId + '/variations/' + _editorVarId + '/html-content', {
       method: 'PUT',
-      body: { html: full },
+      body: { html: html },
     });
     btn.textContent = '✅ Salvo!';
     btn.className = 'et-btn et-save';
     toast('Variação salva com sucesso!');
-    setTimeout(function() {
-      btn.textContent = '💾 Salvar alterações';
-    }, 2000);
+    setTimeout(function() { btn.textContent = '💾 Salvar alterações'; }, 2000);
   } catch (e) {
     btn.textContent = '💾 Salvar alterações';
     btn.className = 'et-btn et-save';
