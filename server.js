@@ -746,4 +746,6 @@ app.listen(PORT, '0.0.0.0', () => {
   logger.info(`EasyTest v3 started`, { port: PORT, env: process.env.NODE_ENV || 'development' });
   // Start daily WhatsApp report scheduler
   require('./jobs/daily-report').startScheduler();
+  // Start AI insight agent (every 4h per active test)
+  require('./jobs/insight-agent').startInsightScheduler();
 });

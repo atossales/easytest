@@ -337,6 +337,24 @@ tr:hover td{background:#F8F8FC}.tn{font-weight:700;color:var(--bk)}
   .mob-nav a svg{width:20px;height:20px}
   .mn{padding-bottom:72px}
 }
+/* ── Auto Insight Card ── */
+.ins-card{background:#fff;border:2px solid var(--g1);border-radius:var(--r);padding:20px;margin-bottom:14px;box-shadow:var(--clay-w)}
+.ins-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap}
+.ins-title{font-size:13px;font-weight:900;display:flex;align-items:center;gap:7px}
+.ins-badge{font-size:9px;font-weight:800;padding:3px 9px;border-radius:20px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 3px 0 #4338ca80;letter-spacing:.3px}
+.ins-meta{font-size:10px;color:var(--g5);font-weight:600}
+.ins-body{font-size:12.5px;line-height:1.85;color:var(--g7);white-space:pre-wrap;word-break:break-word}
+.ins-body strong{color:var(--bk);font-weight:800}
+.ins-snap{display:flex;gap:14px;margin-top:14px;padding:12px 14px;background:var(--g0);border-radius:14px;border:2px solid var(--g1)}
+.ins-snap-item{text-align:center;flex:1}
+.ins-snap-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g5);margin-bottom:2px}
+.ins-snap-val{font-size:16px;font-weight:900}
+.ins-actions{display:flex;gap:8px;margin-top:14px;align-items:center}
+.ins-refresh{padding:7px 16px;font-size:11px;font-weight:800;font-family:'Montserrat',sans-serif;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:12px;cursor:pointer;box-shadow:0 4px 0 #4338ca;transition:all .1s}
+.ins-refresh:hover{opacity:.9;transform:translateY(-1px)}
+.ins-refresh:active{transform:translateY(3px);box-shadow:0 1px 0 #4338ca}
+.ins-refresh:disabled{opacity:.5;cursor:default;transform:none}
+.ins-empty{color:var(--g5);font-size:12px;font-style:italic}
 /* ── Code Editor ── */
 #editor-overlay{display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;background:#0d0d1a}
 #editor-overlay.open{display:flex}
@@ -1023,6 +1041,7 @@ async function rRpt(id, range, start, end) {
     banner +
     '<div class="vc-grid">' + cards + '</div>' +
     sampleBlock +
+    buildInsightCard(id) +
     buildFunnelSection(d.funnel) +
     '<div class="card" style="margin-bottom:14px"><h3>📈 Visitantes por Dia</h3><div class="cc"><canvas id="ch"></canvas></div></div>' +
     channelModule +
@@ -1030,6 +1049,9 @@ async function rRpt(id, range, start, end) {
     utmModule +
     '<details class="coll"><summary>📱 Dispositivos</summary><div class="inner" style="padding-top:10px">' + devHtml + '</div></details>' +
     buildAiBlock(id);
+
+  // Load cached insight (non-blocking — renders after DOM is set)
+  loadInsight(id);
 
   if (d.chart && d.chart.labels && d.chart.labels.length) {
     const ctx = document.getElementById('ch').getContext('2d');
@@ -1297,6 +1319,92 @@ function applyCustomDate(testId) {
   if (!s || !e) { toast('Selecione data de início e fim', true); return; }
   if (s > e)    { toast('Data início deve ser antes do fim', true); return; }
   rRpt(testId, null, s, e);
+}
+
+// ══════════════════════════════════════════════════
+//  AUTO INSIGHT BLOCK (agente a cada 4h)
+// ══════════════════════════════════════════════════
+function buildInsightCard(testId) {
+  return '<div class="ins-card" id="ins-card">' +
+    '<div class="ins-head">' +
+      '<div class="ins-title">🤖 Feedback do Agente IA <span class="ins-badge">AUTO · 4h</span></div>' +
+      '<span class="ins-meta" id="ins-meta"></span>' +
+    '</div>' +
+    '<div id="ins-body"><div class="ins-empty">Carregando análise...</div></div>' +
+    '<div class="ins-actions">' +
+      '<button class="ins-refresh" id="ins-refresh-btn" onclick="refreshInsight(' + testId + ')">🔄 Gerar agora</button>' +
+      '<span style="font-size:10px;color:var(--g5);font-weight:600">Atualiza automaticamente a cada 4 horas</span>' +
+    '</div>' +
+  '</div>';
+}
+
+async function loadInsight(testId) {
+  try {
+    const d = await api('/api/ai/insights/' + testId);
+    _renderInsight(d);
+  } catch(e) {
+    const body = document.getElementById('ins-body');
+    if (body) body.innerHTML = '<div class="ins-empty">Não foi possível carregar o insight.</div>';
+  }
+}
+
+async function refreshInsight(testId) {
+  const btn  = document.getElementById('ins-refresh-btn');
+  const body = document.getElementById('ins-body');
+  const meta = document.getElementById('ins-meta');
+  if (!body) return;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Analisando...'; }
+  if (meta) meta.textContent = '';
+  body.innerHTML = '<div style="display:flex;align-items:center;gap:10px;color:var(--g5);font-size:12px"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Gemini analisando seus dados de conversão...</span></div>';
+  try {
+    const d = await api('/api/ai/insights/' + testId + '/refresh', { method: 'POST', body: {} });
+    _renderInsight(d);
+  } catch(e) {
+    body.innerHTML = '<div class="ins-empty">⚠️ ' + esc(e.message || 'Erro ao gerar insight') + '</div>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Gerar agora'; }
+  }
+}
+
+function _renderInsight(d) {
+  const body = document.getElementById('ins-body');
+  const meta = document.getElementById('ins-meta');
+  if (!body) return;
+
+  if (!d.insight) {
+    body.innerHTML = '<div class="ins-empty">Ainda não há análise para este teste. Clique em "Gerar agora" para criar o primeiro insight, ou aguarde o agente rodar automaticamente.</div>';
+    return;
+  }
+
+  // Formata o texto: emojis como separadores visuais de seção
+  var html = esc(d.insight)
+    .replace(/\n/g, '<br>')
+    .replace(/(📊|🏆|⚠️|🚀)/g, '<br><strong style="font-size:12px;color:var(--bk)">$1</strong>');
+
+  // Snapshot de dados na época da geração
+  var snapHtml = '';
+  if (d.views_snap !== undefined) {
+    snapHtml = '<div class="ins-snap">' +
+      '<div class="ins-snap-item"><div class="ins-snap-lbl">Visitas</div><div class="ins-snap-val">' + N(d.views_snap) + '</div></div>' +
+      '<div class="ins-snap-item"><div class="ins-snap-lbl">Conversões</div><div class="ins-snap-val" style="color:var(--gn)">' + N(d.conv_snap) + '</div></div>' +
+      '<div class="ins-snap-item"><div class="ins-snap-lbl">Taxa CR</div><div class="ins-snap-val" style="color:var(--b)">' + d.cr_snap + '%</div></div>' +
+    '</div>';
+  }
+
+  body.innerHTML = '<div class="ins-body">' + html + '</div>' + snapHtml;
+
+  if (meta && d.generated_at) {
+    var ago = _timeAgo(new Date(d.generated_at));
+    meta.textContent = 'gerado ' + ago;
+  }
+}
+
+function _timeAgo(date) {
+  var diff = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diff < 60)  return 'agora mesmo';
+  if (diff < 3600) return 'há ' + Math.floor(diff / 60) + 'min';
+  if (diff < 86400) return 'há ' + Math.floor(diff / 3600) + 'h';
+  return 'há ' + Math.floor(diff / 86400) + ' dias';
 }
 
 // ══════════════════════════════════════════════════

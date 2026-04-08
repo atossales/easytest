@@ -303,6 +303,38 @@ router.get('/analyze/:id', async (req, res) => {
   }
 });
 
+// ── GET /api/ai/insights/:id — retorna último insight salvo do teste ─────────
+router.get('/insights/:id', (req, res) => {
+  const db  = getDb();
+  const row = db.prepare('SELECT * FROM test_insights WHERE test_id = ?').get(req.params.id);
+  if (!row) return res.json({ ok: true, insight: null });
+  res.json({
+    ok: true,
+    insight: row.insight_text,
+    views_snap: row.views_snap,
+    conv_snap: row.conv_snap,
+    cr_snap: row.cr_snap,
+    generated_at: row.generated_at,
+  });
+});
+
+// ── POST /api/ai/insights/:id/refresh — gera insight manualmente ─────────────
+router.post('/insights/:id/refresh', async (req, res) => {
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(503).json({ error: 'GEMINI_API_KEY não configurada' });
+  }
+  try {
+    const { generateInsight } = require('../jobs/insight-agent');
+    const insight = await generateInsight(Number(req.params.id));
+    const db  = getDb();
+    const row = db.prepare('SELECT * FROM test_insights WHERE test_id = ?').get(req.params.id);
+    res.json({ ok: true, insight, generated_at: row ? row.generated_at : new Date().toISOString() });
+  } catch (e) {
+    const status = e.message.includes('insuficientes') ? 400 : 500;
+    res.status(status).json({ error: e.message });
+  }
+});
+
 // ── GET /api/ai/system-prompt ─────────────────────────────────────────────
 router.get('/system-prompt', (req, res) => {
   res.json({ prompt: getSetting('ai_system_prompt') || DEFAULT_SYSTEM_PROMPT });
