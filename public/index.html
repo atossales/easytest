@@ -1020,12 +1020,6 @@ async function rRpt(id, range, start, end) {
   // (chamada após o innerHTML ser inserido)
   setTimeout(function() { if (document.getElementById('utm-cascade-table')) utmRender(); }, 0);
 
-  // dummy vars que eram usados abaixo na concatenação (agora no utmModule)
-  var utms = [];
-  var _ = utms; // silencia lint virtual
-        '<td style="font-weight:800;color:var(--b)">' + rate + '%</td></tr>';
-    }).join('') + '</tbody></table></div>' : '';
-
   const testName = d.test ? esc(d.test.name) : '';
   const testDate = d.test && d.test.created_at ? new Date(d.test.created_at).toLocaleDateString('pt-BR') : '—';
 
