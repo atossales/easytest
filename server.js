@@ -42,6 +42,17 @@ const apiLimiter = rateLimit({
   legacyHeaders:   false,
 });
 
+// Split endpoint: keyed by cid (not IP) — many mobile users share the same carrier IP
+// Allows 1 req/min per unique visitor (bot protection) but no shared-IP throttling
+const splitLimiter = rateLimit({
+  windowMs:    60 * 1000,
+  max:         5,         // 5 req/min per cid (sticky reload tolerance)
+  standardHeaders: true,
+  legacyHeaders:   false,
+  keyGenerator: (req) => req.query.cid || req.ip, // fallback to IP only if no cid
+  skip: (req) => !req.query.cid, // no cid = unauthenticated first request, skip limit
+});
+
 // ── Core middleware ───────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
@@ -413,7 +424,7 @@ ${pixelExtraEvents}
 // Returns the HTML of the assigned variation so the client can replace content
 // without any redirect — URL stays as tanajuras.com.
 app.options('/api/split/:slug', (req, res) => { res.set('Access-Control-Allow-Origin','*').set('Access-Control-Allow-Methods','GET').set('Access-Control-Allow-Headers','*').sendStatus(204); });
-app.get('/api/split/:slug', publicLimiter, (req, res) => {
+app.get('/api/split/:slug', splitLimiter, (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET');
 
