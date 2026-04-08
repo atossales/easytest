@@ -85,10 +85,12 @@ async function runGuard() {
     const crBaseline = views7d > 0 ? (conv7d / views7d * 100) : null;
 
     // Regra combinada:
-    // - Dinâmica: cr hoje < baseline * ratio (testes com histórico)
-    // - Floor: cr hoje < floor absoluto (testes novos OU dias muito ruins)
-    const belowBaseline = crBaseline !== null && crToday < crBaseline * CR_RATIO;
-    const belowFloor    = crToday < FLOOR;
+    // - Dinâmica: cr hoje < baseline * ratio  (só se há histórico de 7 dias)
+    // - Floor absoluto: cr hoje < floor  (só se há histórico que prove que o teste JÁ converteu)
+    //   → evita pausar testes novos que ainda não têm conversões registradas
+    const hasHistory    = crBaseline !== null && conv7d > 0;
+    const belowBaseline = hasHistory && crToday < crBaseline * CR_RATIO;
+    const belowFloor    = hasHistory && crToday < FLOOR;
 
     if (belowBaseline || belowFloor) {
       db.prepare(
