@@ -621,6 +621,9 @@ app.get('/split.js', (req, res) => {
       window.__cp_uid = d.cid||cid;
       applyHtml(d.html);
       injectCidInLinks(d.cid||cid);
+      // Inject variation name into URL so Meta Andromeda learns separate patterns per variant
+      window.__et_var=d.variation_name;
+      if(d.variation_name&&history.replaceState){try{var _u=new URL(location.href);_u.searchParams.set('et_var',d.variation_name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40));history.replaceState(null,'',_u.toString());}catch(_e){}}
     })
     .catch(function(e){
       document.documentElement.style.visibility='';

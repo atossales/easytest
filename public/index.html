@@ -360,6 +360,26 @@ tr:hover td{background:#F8F8FC}.tn{font-weight:700;color:var(--bk)}
 .ins-refresh:active{transform:translateY(3px);box-shadow:0 1px 0 #4338ca}
 .ins-refresh:disabled{opacity:.5;cursor:default;transform:none}
 .ins-empty{color:var(--g5);font-size:12px;font-style:italic}
+/* ── Version History Modal ── */
+#ver-overlay{display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.55);align-items:center;justify-content:center}
+#ver-overlay.open{display:flex}
+#ver-modal{background:#fff;border-radius:var(--r);box-shadow:0 8px 0 #C8C8CC,0 24px 48px rgba(0,0,0,.18);width:min(520px,96vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden}
+#ver-modal .vm-head{padding:18px 20px;border-bottom:2px solid var(--g1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#ver-modal .vm-title{font-size:15px;font-weight:800;color:var(--bk)}
+#ver-modal .vm-close{background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--g5);padding:0 4px}
+#ver-modal .vm-body{padding:16px 20px;overflow-y:auto;flex:1}
+#ver-modal .vm-upload{margin-bottom:16px;padding:14px;background:var(--g0);border-radius:12px;border:2px dashed var(--g2)}
+#ver-modal .vm-upload label{font-size:12px;font-weight:700;color:var(--g5);display:block;margin-bottom:6px}
+#ver-modal .vm-upload input{font-size:12px;width:100%}
+#ver-modal .vm-upload .vm-up-btn{margin-top:8px;width:100%}
+#ver-modal .ver-list{display:flex;flex-direction:column;gap:8px}
+#ver-modal .ver-item{padding:12px 14px;border:2px solid var(--g1);border-radius:12px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 0 var(--g1)}
+#ver-modal .ver-item.current{border-color:#00C48C55;background:#F0FDF4}
+#ver-modal .ver-num{font-size:10px;font-weight:900;color:var(--g5);min-width:28px}
+#ver-modal .ver-name{flex:1;font-size:12px;font-weight:700;color:var(--bk)}
+#ver-modal .ver-date{font-size:10px;color:var(--g5);white-space:nowrap}
+#ver-modal .ver-acts{display:flex;gap:6px;flex-shrink:0}
+#ver-modal .ver-tag{font-size:10px;font-weight:700;background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:20px}
 /* ── Code Editor ── */
 #editor-overlay{display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;background:#0d0d1a}
 #editor-overlay.open{display:flex}
@@ -392,6 +412,26 @@ tr:hover td{background:#F8F8FC}.tn{font-weight:700;color:var(--bk)}
 <body>
 
 <!-- ── Code Editor Overlay ── -->
+<!-- ── Version History Modal ─────────────────────────────────── -->
+<div id="ver-overlay" onclick="if(event.target===this)closeVersions()">
+  <div id="ver-modal">
+    <div class="vm-head">
+      <span class="vm-title" id="ver-modal-title">📋 Versões</span>
+      <button class="vm-close" onclick="closeVersions()">×</button>
+    </div>
+    <div class="vm-body">
+      <div class="vm-upload">
+        <label>⬆ Subir novo HTML (arquiva o atual automaticamente)</label>
+        <input type="file" id="ver-file-input" accept=".html,.htm">
+        <button class="btn bsm b-primary vm-up-btn" onclick="uploadNewVersion()">Enviar nova versão</button>
+      </div>
+      <div class="ver-list" id="ver-list">
+        <div class="ins-empty">Carregando versões…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="editor-overlay">
   <div id="editor-topbar">
     <span id="editor-title" class="et-title">Editor de Código<span class="et-sub"></span></span>
@@ -1195,7 +1235,8 @@ function buildVarCard(v, i, testId, ctrl, crowned) {
     : '';
 
   const editBtn = testId
-    ? '<button class="btn bs bsm" style="margin-top:6px;width:100%;font-size:11px;font-weight:800" data-edit-test="' + testId + '" data-edit-var="' + v.id + '" data-edit-name="' + esc(v.name) + '" onclick="event.stopPropagation();openEditorFromBtn(this)">✏️ Editar HTML</button>'
+    ? '<button class="btn bs bsm" style="margin-top:6px;width:100%;font-size:11px;font-weight:800" data-edit-test="' + testId + '" data-edit-var="' + v.id + '" data-edit-name="' + esc(v.name) + '" onclick="event.stopPropagation();openEditorFromBtn(this)">✏️ Editar HTML</button>' +
+      '<button class="btn bs bsm" style="margin-top:4px;width:100%;font-size:11px;font-weight:800;background:var(--g0);color:var(--bk);border-color:var(--g2)" onclick="event.stopPropagation();openVersions(' + testId + ',' + v.id + ',\'' + esc(v.name) + '\')">📋 Versões</button>'
     : '';
 
   const isActive   = v.active !== 0;
@@ -1450,6 +1491,114 @@ function buildInsightCard(testId) {
       '<span style="font-size:10px;color:var(--g5);font-weight:600">Atualiza automaticamente a cada 4 horas</span>' +
     '</div>' +
   '</div>';
+}
+
+// ── Version History ────────────────────────────────────────────────────────
+
+var _verTestId = null, _verVarId = null;
+
+function openVersions(testId, varId, varName) {
+  _verTestId = testId; _verVarId = varId;
+  document.getElementById('ver-modal-title').textContent = '📋 Versões — ' + varName;
+  document.getElementById('ver-file-input').value = '';
+  document.getElementById('ver-overlay').classList.add('open');
+  loadVersions();
+}
+
+function closeVersions() {
+  document.getElementById('ver-overlay').classList.remove('open');
+}
+
+async function loadVersions() {
+  var list = document.getElementById('ver-list');
+  list.innerHTML = '<div class="ins-empty">Carregando…</div>';
+  try {
+    var r = await fetch('/api/tests/' + _verTestId + '/variations/' + _verVarId + '/versions');
+    var d = await r.json();
+    if (!d.versions) { list.innerHTML = '<div class="ins-empty">Erro ao carregar versões.</div>'; return; }
+
+    var html = '';
+    // Current version
+    if (d.current && d.current.file_path) {
+      html += '<div class="ver-item current">' +
+        '<span class="ver-num">🟢</span>' +
+        '<div>' +
+          '<div class="ver-name">' + esc(d.current.file_original || d.current.file_path) + '</div>' +
+          '<span class="ver-tag">ATUAL</span>' +
+        '</div>' +
+      '</div>';
+    } else {
+      html += '<div class="ver-item current"><span class="ver-num">🟢</span><div><div class="ver-name">Sem arquivo (usar editor)</div><span class="ver-tag">ATUAL</span></div></div>';
+    }
+
+    if (!d.versions.length) {
+      html += '<div class="ins-empty" style="margin-top:12px">Nenhuma versão arquivada ainda. Suba um novo HTML para criar o histórico.</div>';
+    } else {
+      html += d.versions.map(function(v) {
+        var dt = v.created_at ? new Date(v.created_at).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+        return '<div class="ver-item">' +
+          '<span class="ver-num">v' + v.version_number + '</span>' +
+          '<div style="flex:1">' +
+            '<div class="ver-name">' + esc(v.file_original || v.file_path) + (v.label ? ' — ' + esc(v.label) : '') + '</div>' +
+            '<div class="ver-date">' + dt + '</div>' +
+          '</div>' +
+          '<div class="ver-acts">' +
+            '<button class="btn bsm bs" onclick="restoreVersion(' + v.id + ')">↩ Restaurar</button>' +
+            '<button class="btn bsm bs" style="color:#EF4444;border-color:#FCA5A5" onclick="deleteVersion(' + v.id + ')">🗑</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+    list.innerHTML = html;
+  } catch(e) {
+    list.innerHTML = '<div class="ins-empty">Erro: ' + e.message + '</div>';
+  }
+}
+
+async function uploadNewVersion() {
+  var file = document.getElementById('ver-file-input').files[0];
+  if (!file) { alert('Selecione um arquivo HTML primeiro.'); return; }
+  var btn = document.querySelector('.vm-up-btn');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  var fd = new FormData();
+  fd.append('page', file);
+  try {
+    var r = await fetch('/api/tests/' + _verTestId + '/variations/' + _verVarId + '/html', { method: 'POST', body: fd });
+    var d = await r.json();
+    if (!d.success) throw new Error(d.error || 'Erro');
+    document.getElementById('ver-file-input').value = '';
+    loadVersions();
+    rRpt(_verTestId); // refresh report
+  } catch(e) {
+    alert('Erro ao enviar: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enviar nova versão';
+  }
+}
+
+async function restoreVersion(versionId) {
+  if (!confirm('Restaurar esta versão? A atual será arquivada automaticamente.')) return;
+  try {
+    var r = await fetch('/api/tests/' + _verTestId + '/variations/' + _verVarId + '/versions/restore/' + versionId, { method: 'POST' });
+    var d = await r.json();
+    if (!d.success) throw new Error(d.error || 'Erro');
+    loadVersions();
+    rRpt(_verTestId);
+  } catch(e) {
+    alert('Erro ao restaurar: ' + e.message);
+  }
+}
+
+async function deleteVersion(versionId) {
+  if (!confirm('Excluir permanentemente esta versão? Esta ação não pode ser desfeita.')) return;
+  try {
+    var r = await fetch('/api/tests/' + _verTestId + '/variations/' + _verVarId + '/versions/' + versionId, { method: 'DELETE' });
+    var d = await r.json();
+    if (!d.success) throw new Error(d.error || 'Erro');
+    loadVersions();
+  } catch(e) {
+    alert('Erro ao excluir: ' + e.message);
+  }
 }
 
 async function loadInsight(testId) {

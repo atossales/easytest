@@ -4,6 +4,7 @@ const multer  = require('multer');
 const path    = require('path');
 const fs      = require('fs');
 const { getDb, UPLOADS } = require('../lib/database');
+const ARCHIVED = path.join(path.dirname(UPLOADS), 'archived');
 const { sanitize, generate, fromName } = require('../lib/slugify');
 const logger  = require('../lib/logger');
 
@@ -26,6 +27,16 @@ const upload = multer({
     else cb(new Error('Apenas arquivos .html são aceitos'));
   },
 });
+
+// Archive current variation file into variation_versions history
+function archiveCurrentVersion(db, v) {
+  if (!v.file_path) return;
+  const count = db.prepare('SELECT COUNT(*) AS c FROM variation_versions WHERE variation_id = ?').get(v.id).c;
+  db.prepare(`
+    INSERT INTO variation_versions (variation_id, file_path, file_original, label, version_number)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(v.id, v.file_path, v.file_original || null, null, count + 1);
+}
 
 function extractTitle(filePath) {
   try {
@@ -181,11 +192,8 @@ router.post('/:id/variations/:vid/html', upload.single('page'), (req, res) => {
   if (!v) return res.status(404).json({ error: 'Variação não encontrada' });
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
 
-  // Delete old file
-  if (v.file_path) {
-    const old = path.resolve(UPLOADS, path.basename(v.file_path));
-    if (old.startsWith(UPLOADS) && fs.existsSync(old)) fs.unlinkSync(old);
-  }
+  // Archive current version instead of deleting
+  archiveCurrentVersion(db, v);
 
   const autoName = extractTitle(req.file.path) || req.file.originalname.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
   db.prepare('UPDATE variations SET file_path = ?, file_original = ?, name = ? WHERE id = ?')
@@ -322,6 +330,73 @@ router.put('/:id/variations/:vid/html-content', express.json({ limit: '10mb' }),
     res.status(500).json({ error: 'Falha ao salvar arquivo' });
   }
 });
+
+// ── Version history endpoints ───────────────────────────────────────────────
+
+// GET /api/tests/:id/variations/:vid/versions — list all archived versions
+router.get('/:id/variations/:vid/versions', (req, res) => {
+  const db = getDb();
+  const v  = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(req.params.vid, req.params.id);
+  if (!v) return res.status(404).json({ error: 'Variação não encontrada' });
+
+  const versions = db.prepare(
+    'SELECT * FROM variation_versions WHERE variation_id = ? ORDER BY version_number DESC'
+  ).all(v.id);
+
+  res.json({ current: { file_path: v.file_path, file_original: v.file_original }, versions });
+});
+
+// POST /api/tests/:id/variations/:vid/versions/restore/:versionId — restore a version
+router.post('/:id/variations/:vid/versions/restore/:versionId', (req, res) => {
+  const db      = getDb();
+  const v       = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(req.params.vid, req.params.id);
+  if (!v) return res.status(404).json({ error: 'Variação não encontrada' });
+
+  const version = db.prepare('SELECT * FROM variation_versions WHERE id = ? AND variation_id = ?').get(req.params.versionId, v.id);
+  if (!version) return res.status(404).json({ error: 'Versão não encontrada' });
+
+  // Verify file still exists
+  const fp = path.resolve(UPLOADS, path.basename(version.file_path));
+  if (!fp.startsWith(UPLOADS) || !fs.existsSync(fp)) {
+    return res.status(410).json({ error: 'Arquivo desta versão não existe mais no servidor' });
+  }
+
+  const tx = db.transaction(() => {
+    // Archive current before restoring
+    archiveCurrentVersion(db, v);
+    // Restore
+    db.prepare('UPDATE variations SET file_path = ?, file_original = ? WHERE id = ?')
+      .run(version.file_path, version.file_original, v.id);
+    // Remove the restored version from history (it's now current)
+    db.prepare('DELETE FROM variation_versions WHERE id = ?').run(version.id);
+  });
+  tx();
+
+  res.json({ success: true, variation: db.prepare('SELECT * FROM variations WHERE id = ?').get(v.id) });
+});
+
+// DELETE /api/tests/:id/variations/:vid/versions/:versionId — permanently delete a version
+router.delete('/:id/variations/:vid/versions/:versionId', (req, res) => {
+  const db      = getDb();
+  const v       = db.prepare('SELECT * FROM variations WHERE id = ? AND test_id = ?').get(req.params.vid, req.params.id);
+  if (!v) return res.status(404).json({ error: 'Variação não encontrada' });
+
+  const version = db.prepare('SELECT * FROM variation_versions WHERE id = ? AND variation_id = ?').get(req.params.versionId, v.id);
+  if (!version) return res.status(404).json({ error: 'Versão não encontrada' });
+
+  // Only delete file if it's NOT the current active file
+  if (version.file_path !== v.file_path) {
+    const fp = path.resolve(UPLOADS, path.basename(version.file_path));
+    if (fp.startsWith(UPLOADS) && fs.existsSync(fp)) {
+      try { fs.unlinkSync(fp); } catch (e) { /* best-effort */ }
+    }
+  }
+
+  db.prepare('DELETE FROM variation_versions WHERE id = ?').run(version.id);
+  res.json({ success: true });
+});
+
+// ── Variation delete ────────────────────────────────────────────────────────
 
 router.delete('/:id/variations/:vid', (req, res) => {
   const db = getDb();
