@@ -748,4 +748,6 @@ app.listen(PORT, '0.0.0.0', () => {
   require('./jobs/daily-report').startScheduler();
   // Start AI insight agent (every 4h per active test)
   require('./jobs/insight-agent').startInsightScheduler();
+  // Start performance guard (every 30min + midnight reset)
+  require('./jobs/performance-guard').startGuardScheduler();
 });

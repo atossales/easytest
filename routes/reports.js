@@ -192,7 +192,7 @@ router.get('/:id', (req, res) => {
     ORDER BY views DESC LIMIT 20
   `).all(id);
 
-  // Campanha breakdown
+  // UTM Cascade — nível 1: Campanhas (utm_campaign)
   const utmCampaigns = db.prepare(`
     SELECT
       COALESCE(utm_campaign, '(sem campanha)') AS campaign,
@@ -201,7 +201,34 @@ router.get('/:id', (req, res) => {
       COUNT(CASE WHEN type = 'conversion' THEN 1 END) AS conversions
     FROM interactions WHERE test_id = ? AND utm_campaign IS NOT NULL ${df} ${NO_BOT}
     GROUP BY utm_campaign, utm_source
-    ORDER BY views DESC LIMIT 10
+    ORDER BY views DESC LIMIT 50
+  `).all(id);
+
+  // UTM Cascade — nível 2: Conjuntos (utm_content = ad set)
+  const utmAdSets = db.prepare(`
+    SELECT
+      COALESCE(utm_campaign, '(sem campanha)') AS campaign,
+      COALESCE(utm_source, 'organic') AS source,
+      COALESCE(utm_content, '(sem conjunto)') AS adset,
+      COUNT(*) AS views,
+      COUNT(CASE WHEN type = 'conversion' THEN 1 END) AS conversions
+    FROM interactions WHERE test_id = ? AND (utm_campaign IS NOT NULL OR utm_content IS NOT NULL) ${df} ${NO_BOT}
+    GROUP BY utm_campaign, utm_source, utm_content
+    ORDER BY views DESC LIMIT 50
+  `).all(id);
+
+  // UTM Cascade — nível 3: Anúncios (utm_term = ad)
+  const utmAds = db.prepare(`
+    SELECT
+      COALESCE(utm_campaign, '(sem campanha)') AS campaign,
+      COALESCE(utm_source, 'organic') AS source,
+      COALESCE(utm_content, '(sem conjunto)') AS adset,
+      COALESCE(utm_term, '(sem anúncio)') AS ad,
+      COUNT(*) AS views,
+      COUNT(CASE WHEN type = 'conversion' THEN 1 END) AS conversions
+    FROM interactions WHERE test_id = ? AND (utm_campaign IS NOT NULL OR utm_term IS NOT NULL) ${df} ${NO_BOT}
+    GROUP BY utm_campaign, utm_source, utm_content, utm_term
+    ORDER BY views DESC LIMIT 50
   `).all(id);
 
   // Canal de tráfego + click IDs
@@ -289,7 +316,7 @@ router.get('/:id', (req, res) => {
       labels,
       datasets: Object.values(ds).map(d => ({ ...d, data: labels.map(l => d.data[l] || 0) })),
     },
-    breakdown: { devices, utmSources, utmCampaigns, trafficChannels, clickIds },
+    breakdown: { devices, utmSources, utmCampaigns, utmAdSets, utmAds, trafficChannels, clickIds },
     funnel,
   });
 });

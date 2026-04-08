@@ -337,6 +337,11 @@ tr:hover td{background:#F8F8FC}.tn{font-weight:700;color:var(--bk)}
   .mob-nav a svg{width:20px;height:20px}
   .mn{padding-bottom:72px}
 }
+/* ── UTM Cascade tabs ── */
+.utm-tab-btn{border-radius:20px!important}
+.utm-tab-active{background:var(--bk)!important;color:#fff!important;border-color:var(--bk)!important;box-shadow:0 4px 0 #000!important}
+/* ── Auto Paused badge ── */
+.b-guard{background:#FEF3C7;color:#92400E;box-shadow:0 3px 0 #D4930A40}
 /* ── Auto Insight Card ── */
 .ins-card{background:#fff;border:2px solid var(--g1);border-radius:var(--r);padding:20px;margin-bottom:14px;box-shadow:var(--clay-w)}
 .ins-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap}
@@ -719,7 +724,9 @@ async function rDash(range) {
     var crColor = x.conversion_rate >= 3 ? 'var(--gn)' : x.conversion_rate >= 1 ? 'var(--bk)' : 'var(--rd)';
     var badge   = x.active
       ? '<span class="badge b-on">Ativo</span>'
-      : '<span class="badge" style="background:var(--g1);color:var(--g5)">Pausado</span>';
+      : (x.auto_paused
+        ? '<span class="badge b-guard">⏸ Guard</span>'
+        : '<span class="badge b-off">Pausado</span>');
     return '<tr>' +
       '<td class="tn">' + esc(x.name) + '</td>' +
       '<td>' + N(x.views) + '</td>' +
@@ -791,7 +798,7 @@ async function rTests() {
             '<td class="tn" style="cursor:pointer" onclick="go(\'report\',' + t.id + ')">' + esc(t.name) + '</td>' +
             '<td>' + t.variation_count + '</td><td>' + N(t.total_views) + '</td><td>' + N(t.total_conversions) + '</td>' +
             '<td style="font-weight:800;color:var(--b)">' + (t.total_views > 0 ? ((t.total_conversions/t.total_views)*100).toFixed(1) : '0.0') + '%</td>' +
-            '<td><span class="badge ' + (t.active ? 'b-on' : 'b-off') + '">' + (t.active ? 'Ativo' : 'Off') + '</span></td>' +
+            '<td><span class="badge ' + (t.active ? 'b-on' : (t.auto_paused ? 'b-guard' : 'b-off')) + '">' + (t.active ? 'Ativo' : (t.auto_paused ? '⏸ Guard' : 'Off')) + '</span></td>' +
             '<td class="acts"><button class="btn bs bsm" onclick="go(\'report\',' + t.id + ')">Ver</button>' +
             '<button class="btn bs bsm" onclick="rEdit(' + t.id + ')">✏️</button>' +
             '<button class="btn br bsm" onclick="delTest(' + t.id + ')">✕</button></td></tr>';
@@ -950,12 +957,19 @@ async function rRpt(id, range, start, end) {
     : '<p style="font-size:11px;color:var(--g3);padding:8px 0">Sem dados de dispositivo ainda.</p>';
 
   // UTM breakdown
-  const utms = (d.breakdown && d.breakdown.utmSources) || [];
-  const campaigns = (d.breakdown && d.breakdown.utmCampaigns) || [];
   const channels = (d.breakdown && d.breakdown.trafficChannels) || [];
   const clickIds = (d.breakdown && d.breakdown.clickIds) || {};
 
-  // UTM modules — visual cards
+  // UTM Cascade — dados dos 3 níveis
+  window._utmData = {
+    campaigns: (d.breakdown && d.breakdown.utmCampaigns) || [],
+    adsets:    (d.breakdown && d.breakdown.utmAdSets)    || [],
+    ads:       (d.breakdown && d.breakdown.utmAds)       || [],
+  };
+  window._utmSort  = { col: 'views', dir: 'desc' };
+  window._utmLevel = 'campaigns';
+
+  // Canal de tráfego
   const totalViews = s.total_views || 1;
   const chMax = Math.max.apply(null, channels.map(function(x) { return x.views; }).concat([1]));
 
@@ -964,10 +978,10 @@ async function rRpt(id, range, start, end) {
     var pct  = ((c.views / chMax) * 100).toFixed(0);
     var share = ((c.views / totalViews) * 100).toFixed(0);
     var icon = c.channel === 'Meta Ads' ? '📘' : c.channel === 'Google Ads' ? '🔍' : c.channel === 'TikTok Ads' ? '🎵' : c.channel === 'Email' ? '📧' : c.channel === 'Direto' ? '🔗' : c.channel === 'Orgânico' ? '🌿' : '📡';
-    return '<div style="background:var(--w);border:1px solid var(--g2);border-radius:10px;padding:14px 16px">' +
+    return '<div style="background:var(--w);border:2px solid var(--g1);border-radius:14px;padding:14px 16px;box-shadow:0 4px 0 #C8C8CC">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
       '<span style="font-size:12px;font-weight:800">' + icon + ' ' + esc(c.channel) + '</span>' +
-      '<span style="font-size:10px;font-weight:700;background:var(--bl);color:var(--b);padding:2px 8px;border-radius:20px">' + share + '% do tráfego</span>' +
+      '<span style="font-size:10px;font-weight:700;background:var(--bl);color:var(--b);padding:2px 8px;border-radius:20px">' + share + '%</span>' +
       '</div>' +
       '<div style="height:6px;background:var(--g1);border-radius:3px;margin-bottom:10px"><div style="height:100%;background:var(--b);border-radius:3px;width:' + pct + '%"></div></div>' +
       '<div style="display:flex;gap:16px">' +
@@ -979,37 +993,36 @@ async function rRpt(id, range, start, end) {
 
   const channelModule = '<div class="card" style="margin-bottom:14px"><h3>📡 Canal de Tráfego</h3>' +
     (channels.length
-      ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">' + channels.map(utmChannelCard).join('') + '</div>'
+      ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px">' + channels.map(utmChannelCard).join('') + '</div>'
       : '<p style="font-size:11px;color:var(--g3);margin-top:6px">Sem dados de canal ainda.</p>') +
     '</div>';
 
-  const campMax = Math.max.apply(null, campaigns.map(function(x) { return x.views; }).concat([1]));
-  const campaignModule = campaigns.length ? '<div class="card" style="margin-bottom:14px"><h3>🎯 Campanhas (UTM)</h3>' +
-    campaigns.map(function(c) {
-      var rate = c.views > 0 ? ((c.conversions/c.views)*100).toFixed(1) : '0.0';
-      var w = ((c.views/campMax)*100).toFixed(0);
-      return '<div style="margin-bottom:10px">' +
-        '<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
-        '<span style="font-size:11.5px;font-weight:700">' + esc(c.campaign) + '</span>' +
-        '<span style="font-size:10px;color:var(--g5)">' + esc(c.source) + ' · ' + N(c.views) + ' views · <strong style="color:var(--b)">' + rate + '%</strong></span>' +
-        '</div>' +
-        '<div style="height:8px;background:var(--g1);border-radius:4px"><div style="height:100%;background:var(--b);border-radius:4px;width:' + w + '%"></div></div>' +
-        '</div>';
-    }).join('') + '</div>' : '';
+  // UTM Cascade — módulo único com tabs + sort
+  var utmHasData = window._utmData.campaigns.length || window._utmData.adsets.length || window._utmData.ads.length;
+  var campaignModule = ''; // removido — agora está integrado no cascade
+  var utmMax = 1; // mantido por compatibilidade mas não usado
+  var utmModule = utmHasData ? '<div class="card" style="margin-bottom:14px" id="utm-cascade-card">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">' +
+      '<h3 style="margin:0">🎯 Tráfego em Cascata</h3>' +
+      '<div style="display:flex;gap:6px">' +
+        '<button class="dr-btn utm-tab-btn utm-tab-active" onclick="utmSetLevel(\'campaigns\')">Campanhas</button>' +
+        '<button class="dr-btn utm-tab-btn" onclick="utmSetLevel(\'adsets\')">Conjuntos</button>' +
+        '<button class="dr-btn utm-tab-btn" onclick="utmSetLevel(\'ads\')">Anúncios</button>' +
+      '</div>' +
+    '</div>' +
+    '<div id="utm-cascade-table"></div>' +
+  '</div>' : '';
 
-  const utmMax = Math.max.apply(null, utms.map(function(x) { return x.views; }).concat([1]));
-  const utmModule = utms.length ? '<div class="card" style="margin-bottom:14px"><h3>🔗 Fontes de Tráfego</h3>' +
-    '<table style="margin-top:4px"><thead><tr><th>Fonte</th><th>Meio</th><th>Campanha</th><th>Views</th><th>Conv.</th><th>Taxa</th></tr></thead><tbody>' +
-    utms.map(function(u) {
-      var rate = u.views > 0 ? ((u.conversions/u.views)*100).toFixed(1) : '0.0';
-      var w = ((u.views/utmMax)*100).toFixed(0);
-      return '<tr>' +
-        '<td><div style="font-weight:700;font-size:12px">' + esc(u.source) + '</div>' +
-        '<div style="height:3px;background:var(--g1);border-radius:2px;margin-top:3px"><div style="height:100%;background:var(--b);border-radius:2px;width:' + w + '%"></div></div></td>' +
-        '<td style="color:var(--g5)">' + (esc(u.medium) || '—') + '</td>' +
-        '<td style="color:var(--g5);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (esc(u.campaign) || '—') + '</td>' +
-        '<td style="font-weight:700">' + N(u.views) + '</td>' +
-        '<td style="color:var(--gn);font-weight:700">' + N(u.conversions) + '</td>' +
+  // placeholder para variáveis que eram usadas abaixo
+  var campMax = 1;
+
+  // ── renderização da tabela UTM cascade ────────────────────────────────────
+  // (chamada após o innerHTML ser inserido)
+  setTimeout(function() { if (document.getElementById('utm-cascade-table')) utmRender(); }, 0);
+
+  // dummy vars que eram usados abaixo na concatenação (agora no utmModule)
+  var utms = [];
+  var _ = utms; // silencia lint virtual
         '<td style="font-weight:800;color:var(--b)">' + rate + '%</td></tr>';
     }).join('') + '</tbody></table></div>' : '';
 
@@ -1322,6 +1335,113 @@ function applyCustomDate(testId) {
 }
 
 // ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+//  UTM CASCADE — Campanhas / Conjuntos / Anúncios
+// ══════════════════════════════════════════════════
+function utmSetLevel(level) {
+  window._utmLevel = level;
+  window._utmSort  = { col: 'views', dir: 'desc' };
+  document.querySelectorAll('.utm-tab-btn').forEach(function(b) {
+    b.classList.toggle('utm-tab-active', b.textContent.toLowerCase().includes(
+      level === 'campaigns' ? 'campanha' : level === 'adsets' ? 'conjunto' : 'anúncio'
+    ));
+  });
+  utmRender();
+}
+
+function utmSortBy(col) {
+  if (window._utmSort.col === col) {
+    window._utmSort.dir = window._utmSort.dir === 'desc' ? 'asc' : 'desc';
+  } else {
+    window._utmSort.col = col;
+    window._utmSort.dir = 'desc';
+  }
+  utmRender();
+}
+
+function utmRender() {
+  var el = document.getElementById('utm-cascade-table');
+  if (!el || !window._utmData) return;
+
+  var level = window._utmLevel || 'campaigns';
+  var rows  = (window._utmData[level] || []).slice();
+  var sort  = window._utmSort || { col: 'views', dir: 'desc' };
+
+  // Sort
+  rows.sort(function(a, b) {
+    var aVal, bVal;
+    if (sort.col === 'taxa') {
+      aVal = a.views > 0 ? a.conversions / a.views : 0;
+      bVal = b.views > 0 ? b.conversions / b.views : 0;
+    } else {
+      aVal = a[sort.col] || 0;
+      bVal = b[sort.col] || 0;
+    }
+    return sort.dir === 'desc' ? bVal - aVal : aVal - bVal;
+  });
+
+  if (!rows.length) {
+    el.innerHTML = '<p style="font-size:11px;color:var(--g3);padding:8px 0">Sem dados UTM para este nível.</p>';
+    return;
+  }
+
+  // Column config por nível
+  var cols = {
+    campaigns: [
+      { key: 'source',    label: 'Fonte',     sortable: false },
+      { key: 'campaign',  label: 'Campanha',  sortable: false },
+      { key: 'views',     label: 'Views',     sortable: true },
+      { key: 'conversions', label: 'Conv.', sortable: true },
+      { key: 'taxa',      label: 'Taxa',      sortable: true },
+    ],
+    adsets: [
+      { key: 'source',  label: 'Fonte',    sortable: false },
+      { key: 'adset',   label: 'Conjunto', sortable: false },
+      { key: 'views',   label: 'Views',    sortable: true },
+      { key: 'conversions', label: 'Conv.', sortable: true },
+      { key: 'taxa',    label: 'Taxa',     sortable: true },
+    ],
+    ads: [
+      { key: 'source', label: 'Fonte',    sortable: false },
+      { key: 'ad',     label: 'Anúncio',  sortable: false },
+      { key: 'views',  label: 'Views',    sortable: true },
+      { key: 'conversions', label: 'Conv.', sortable: true },
+      { key: 'taxa',   label: 'Taxa',     sortable: true },
+    ],
+  };
+
+  var colDefs = cols[level];
+  var arrow = function(col) {
+    if (sort.col !== col) return ' <span style="color:var(--g3);font-size:9px">↕</span>';
+    return sort.dir === 'desc'
+      ? ' <span style="color:var(--b);font-size:9px">↓</span>'
+      : ' <span style="color:var(--b);font-size:9px">↑</span>';
+  };
+
+  var maxViews = Math.max.apply(null, rows.map(function(r) { return r.views; }).concat([1]));
+
+  var thead = '<thead><tr>' + colDefs.map(function(c) {
+    return '<th style="' + (c.sortable ? 'cursor:pointer;user-select:none' : '') + '" ' +
+      (c.sortable ? 'onclick="utmSortBy(\'' + c.key + '\')"' : '') + '>' +
+      c.label + (c.sortable ? arrow(c.key) : '') + '</th>';
+  }).join('') + '</tr></thead>';
+
+  var tbody = '<tbody>' + rows.map(function(row) {
+    var rate = row.views > 0 ? ((row.conversions / row.views) * 100).toFixed(1) : '0.0';
+    var w    = ((row.views / maxViews) * 100).toFixed(0);
+    return '<tr>' + colDefs.map(function(c) {
+      if (c.key === 'taxa')    return '<td style="font-weight:800;color:var(--b)">' + rate + '%</td>';
+      if (c.key === 'views')   return '<td style="font-weight:700"><div>' + N(row.views) + '</div>' +
+        '<div style="height:3px;background:var(--g1);border-radius:2px;margin-top:3px"><div style="height:100%;background:var(--b);border-radius:2px;width:' + w + '%"></div></div></td>';
+      if (c.key === 'conversions') return '<td style="color:var(--gn);font-weight:700">' + N(row.conversions) + '</td>';
+      return '<td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(row[c.key] || '—') + '">' + esc(row[c.key] || '—') + '</td>';
+    }).join('') + '</tr>';
+  }).join('') + '</tbody>';
+
+  el.innerHTML = '<table style="margin-top:4px">' + thead + tbody + '</table>';
+}
+
+// ══════════════════════════════════════════════════
 //  AUTO INSIGHT BLOCK (agente a cada 4h)
 // ══════════════════════════════════════════════════
 function buildInsightCard(testId) {
@@ -1463,7 +1583,7 @@ async function rMobileTests(filter) {
     return '<div class="tc" onclick="go(\'report\',' + t.id + ')">' +
       '<div class="tc-top">' +
       '<div class="tc-name">' + esc(t.name) + '</div>' +
-      '<span class="badge ' + (t.active ? 'b-on' : 'b-off') + '">' + (t.active ? 'Ativo' : 'Off') + '</span>' +
+      '<span class="badge ' + (t.active ? 'b-on' : (t.auto_paused ? 'b-guard' : 'b-off')) + '">' + (t.active ? 'Ativo' : (t.auto_paused ? '⏸ Guard' : 'Off')) + '</span>' +
       '</div>' +
       '<div class="tc-stats">' +
       '<div class="tc-stat"><div class="tsl">Views</div><div class="tsv">' + N(t.total_views) + '</div></div>' +
